@@ -1,0 +1,3421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff">
+  <title>案场销管</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f8f8;
+      --card2: #f0f0f0;
+      --border: #e5e5e5;
+      --gold: #C9A962;
+      --gold-dim: rgba(201,169,98,0.18);
+      --text: #1a1a1a;
+      --text-dim: #666;
+      --green: #2ecc71;
+      --blue: #3498db;
+      --gray: #999;
+      --orange: #e67e22;
+      --red: #e74c3c;
+      --yellow: #f39c12;
+      --safe: env(safe-area-inset-bottom);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      height: 100%;
+      font-family: system-ui, -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    body { display: flex; flex-direction: column; }
+
+    /* ===== LOGIN SCREEN ===== */
+    #login-screen {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px;
+      z-index: 9999;
+    }
+    #login-screen.hidden { display: none; }
+    .login-logo {
+      font-size: 32px; font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 8px;
+      letter-spacing: 4px;
+    }
+    .login-sub {
+      font-size: 13px; color: var(--text-dim);
+      margin-bottom: 40px;
+    }
+    .login-form {
+      width: 100%; max-width: 360px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .login-role-group {
+      display: flex; gap: 10px;
+    }
+    .role-btn {
+      flex: 1; padding: 14px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      color: var(--text-dim);
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .role-btn.active {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: var(--gold-dim);
+    }
+    .login-input {
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .login-input:focus { border-color: var(--gold); }
+    .login-input::placeholder { color: var(--text-dim); }
+    .login-submit {
+      padding: 16px;
+      background: var(--gold);
+      color: #111;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .login-submit:active { opacity: 0.8; }
+
+    /* ===== ADMIN PANEL ===== */
+    .admin-panel-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 99997;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .admin-panel-overlay.show { display: flex; }
+    .admin-panel {
+      background: #ffffff;
+      border: 1px solid #C9A962;
+      border-radius: 16px;
+      width: 100%; max-width: 480px;
+      margin: 20px 0 40px;
+      overflow: hidden;
+    }
+    .admin-panel-header {
+      padding: 16px 20px;
+      background: linear-gradient(135deg, rgba(201,169,98,0.18), rgba(201,169,98,0.06));
+      border-bottom: 1px solid #e5e5e5;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .admin-panel-body { padding: 16px; }
+    .admin-user-card {
+      background: #f8f8f8;
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .admin-badge-approve { background: #2ecc71; color: #fff; border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; }
+    .admin-badge-pending { background: #f39c12; color: #fff; border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; }
+    .admin-badge-reject  { background: #e74c3c; color: #fff; border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; }
+    .admin-section-title { color: #C9A962; font-size: 13px; font-weight: 600; margin: 16px 0 8px; }
+    /* ===== 公共池 TABS ===== */
+    .cust-tabs { display: flex; background: var(--card2); border-radius: 10px; padding: 3px; margin-bottom: 10px; }
+    .cust-tab { flex: 1; padding: 8px 0; border: none; background: transparent; color: var(--text-dim); font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; }
+    .cust-tab.active { background: var(--bg); color: var(--gold); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    /* ===== v3.5.0 销售漏斗 ===== */
+    .funnel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 14px 10px; margin-bottom: 12px; }
+    .funnel-title { font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 10px; }
+    .funnel-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+    .funnel-label { width: 56px; flex-shrink: 0; color: var(--text); font-weight: 600; }
+    .funnel-bar-wrap { flex: 1; height: 18px; background: var(--card2); border-radius: 4px; overflow: hidden; position: relative; }
+    .funnel-bar { height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .funnel-num { width: 36px; text-align: right; color: var(--text-dim); font-size: 11px; }
+    .funnel-rate { font-size: 10px; color: var(--text-dim); margin-left: 4px; }
+
+    /* ===== v3.5.0 阶段徽章 ===== */
+    .stage-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .stage-问询 { background: rgba(150,150,150,0.15); color: #666; border: 1px solid rgba(150,150,150,0.4); }
+    .stage-来访 { background: rgba(52,152,219,0.15); color: #2980b9; border: 1px solid rgba(52,152,219,0.4); }
+    .stage-认筹 { background: rgba(201,169,98,0.15); color: var(--gold); border: 1px solid rgba(201,169,98,0.4); }
+    .stage-认购 { background: rgba(230,126,34,0.15); color: #d35400; border: 1px solid rgba(230,126,34,0.4); }
+    .stage-签约 { background: rgba(46,204,113,0.15); color: #1e9e5a; border: 1px solid rgba(46,204,113,0.4); }
+
+    /* ===== v3.5.0 跟进方式标签 ===== */
+    .method-tag { display: inline-flex; padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; background: var(--card2); color: var(--text-dim); margin-right: 4px; }
+    .method-来电 { background: rgba(52,152,219,0.12); color: #2980b9; }
+    .method-来访 { background: rgba(46,204,113,0.12); color: #1e9e5a; }
+    .method-去电 { background: rgba(230,126,34,0.12); color: #d35400; }
+    .method-微信 { background: rgba(46,204,113,0.12); color: #07c160; }
+    .method-短信 { background: rgba(150,150,150,0.15); color: #666; }
+
+    /* ===== v3.5.0 跟进步骤 ===== */
+    .followup-timeline { margin-top: 8px; }
+    .followup-item { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 12px; }
+    .followup-item:first-child { border-top: none; }
+    .followup-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--card2); color: var(--gold); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .followup-body { flex: 1; min-width: 0; }
+    .followup-meta { color: var(--text-dim); font-size: 11px; margin-bottom: 4px; }
+    .followup-content { color: var(--text); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+    .followup-next { color: var(--gold); font-size: 11px; margin-top: 4px; }
+
+    /* ===== v3.5.0 快速跟进弹窗 ===== */
+    .quick-followup { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 10px; }
+    .quick-followup textarea { width: 100%; min-height: 60px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 13px; box-sizing: border-box; resize: vertical; font-family: inherit; }
+    .qf-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+    .qf-btn { padding: 6px 14px; background: var(--gold); color: #1a1a1a; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px; }
+    .qf-btn.cancel { background: var(--card); color: var(--text-dim); border: 1px solid var(--border); }
+
+    /* ===== v3.5.0 阈值设置 ===== */
+    .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-input { width: 60px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); text-align: center; font-size: 13px; font-weight: 700; }
+
+    /* ===== v3.5.0 历史记录 ===== */
+    .history-item { display: flex; gap: 8px; padding: 6px 0; font-size: 11px; color: var(--text-dim); border-top: 1px solid var(--border); }
+    .history-item:first-child { border-top: none; }
+    .history-time { width: 90px; flex-shrink: 0; color: var(--text-dim); }
+
+    .pool-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: rgba(201,169,98,0.15); color: var(--gold); border: 1px solid rgba(201,169,98,0.4); }
+    .deal-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .deal-signed { background: rgba(46,204,113,0.15); color: #1e9e5a; border: 1px solid rgba(46,204,113,0.4); }
+    .deal-subscribed { background: rgba(230,126,34,0.15); color: #d35400; border: 1px solid rgba(230,126,34,0.4); }
+
+    /* ===== 经理团队视图 ===== */
+    .team-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+    .team-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .team-name { font-size: 15px; font-weight: 700; color: var(--text); }
+    .team-rate { font-size: 13px; font-weight: 700; }
+    .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .team-cell { background: var(--card2); border-radius: 8px; padding: 8px 6px; text-align: center; }
+    .team-cell .n { font-size: 16px; font-weight: 700; color: var(--text); }
+    .team-cell .l { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+    /* ===== 业绩总览（顾问自己） ===== */
+    .perf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .perf-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 8px; text-align: center; }
+    .perf-card .n { font-size: 22px; font-weight: 800; color: var(--gold); }
+    .perf-card .l { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+    .pool-empty { text-align: center; padding: 40px 20px; color: var(--text-dim); font-size: 13px; }
+
+    .admin-setting-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+
+    /* ===== TOP BAR ===== */
+    #topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px;
+      padding-top: calc(12px + env(safe-area-inset-top));
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    #topbar-title {
+      font-size: 17px; font-weight: 600;
+      color: var(--text);
+    }
+    .topbar-btn {
+      width: 36px; height: 36px;
+      background: none; border: none;
+      color: var(--text-dim);
+      font-size: 20px;
+      cursor: pointer;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .topbar-btn:active { background: var(--card); }
+
+    /* ===== PAGE CONTAINERS ===== */
+    .page { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+    .page.active { display: flex; }
+
+    /* ===== BOTTOM NAV ===== */
+    #bottom-nav {
+      display: flex;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding-bottom: var(--safe);
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px;
+      padding: 8px 0;
+      border: none; background: none;
+      color: var(--text-dim);
+      font-size: 10px;
+      cursor: pointer;
+      transition: color 0.2s;
+      min-height: 50px;
+      position: relative;
+    }
+    .nav-item.active { color: var(--gold); }
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%; transform: translateX(-50%);
+      width: 24px; height: 3px;
+      background: var(--gold);
+      border-radius: 0 0 3px 3px;
+    }
+    .nav-icon { font-size: 22px; line-height: 1; }
+
+    /* ===== SCROLL AREA ===== */
+    .scroll-area {
+      flex: 1; overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 12px 80px;
+    }
+    .scroll-area::-webkit-scrollbar { width: 0; }
+
+    /* ===== STAT CARDS ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+.stat-clickable { cursor: pointer; transition: transform 0.1s; }
+.stat-clickable:active { transform: scale(0.96); }
+.stat-tap { font-size: 10px; color: var(--text-dim); margin-top: 3px; opacity: 0.7; }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .stat-card.highlight {
+      border-color: var(--gold);
+      background: var(--gold-dim);
+    }
+    .stat-num {
+      font-size: 28px; font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .stat-card.highlight .stat-num { color: var(--gold); }
+    .stat-label { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+    /* ===== SECTION TITLE ===== */
+    .section-title {
+      font-size: 14px; font-weight: 600;
+      color: var(--text-dim);
+      padding: 8px 0 10px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* ===== CUSTOMER CARD ===== */
+    .customer-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .customer-card:active { border-color: var(--gold); }
+    .card-row1 {
+      display: flex; align-items: center;
+      gap: 8px; margin-bottom: 8px;
+    }
+    .card-name {
+      font-size: 16px; font-weight: 600;
+      color: var(--text);
+      flex: 1;
+    }
+    .card-phone { font-size: 13px; color: var(--text-dim); }
+    .level-badge {
+      display: inline-block;
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      text-align: center; line-height: 22px;
+      font-size: 13px; font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .level-badge.A { background: #1a7a3f; }
+    .level-badge.B { background: #2469b5; }
+    .level-badge.C { background: #555; }
+    .level-badge.D { background: #c06010; }
+    .card-tags {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-bottom: 8px;
+    }
+    .tag {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+    .tag-overdue { background: rgba(231,76,60,0.2); color: var(--red); }
+    .tag-following { background: rgba(46,204,113,0.2); color: var(--green); }
+    .tag-new { background: rgba(201,169,98,0.2); color: var(--gold); }
+    .tag-due { background: rgba(243,156,18,0.2); color: var(--yellow); }
+    .card-meta {
+      font-size: 12px; color: var(--text-dim);
+      display: flex; flex-wrap: wrap; gap: 10px;
+      margin-bottom: 6px;
+    }
+    .card-meta span { display: flex; align-items: center; gap: 3px; }
+    .card-note {
+      font-size: 12px; color: var(--text-dim);
+      background: var(--card2);
+      border-radius: 6px;
+      padding: 6px 8px;
+      margin-top: 4px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    /* ===== SEARCH BAR ===== */
+    .search-bar {
+      display: flex; gap: 8px;
+      margin-bottom: 12px;
+    }
+    .search-input {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+    .search-input:focus { border-color: var(--gold); }
+    .filter-select {
+      padding: 10px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+    }
+
+    /* ===== PROPERTY LIST ===== */
+    .prop-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .prop-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .prop-info { font-size: 12px; color: var(--text-dim); display: flex; flex-wrap: wrap; gap: 8px; }
+
+    /* ===== CHART ===== */
+    .chart-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .chart-title {
+      font-size: 14px; font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    .bar-chart { display: flex; flex-direction: column; gap: 8px; }
+    .bar-row { display: flex; align-items: center; gap: 8px; }
+    .bar-label { font-size: 12px; color: var(--text-dim); width: 40px; flex-shrink: 0; }
+    .bar-track { flex: 1; height: 20px; background: var(--card2); border-radius: 6px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s; }
+    .bar-val { font-size: 12px; color: var(--text-dim); width: 28px; text-align: right; flex-shrink: 0; }
+
+    /* ===== PROFILE ===== */
+    .profile-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .profile-avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--gold-dim);
+      border: 2px solid var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; margin: 0 auto 10px;
+    }
+    .profile-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .profile-role { font-size: 13px; color: var(--gold); }
+    .action-list { display: flex; flex-direction: column; gap: 2px; }
+    .action-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+    .action-item:active { border-color: var(--gold); }
+    .action-icon { font-size: 20px; width: 28px; text-align: center; }
+    .action-text { flex: 1; }
+    .action-arrow { color: var(--text-dim); font-size: 14px; }
+    .qr-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .qr-hint { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+
+    /* ===== DETAIL PAGE ===== */
+    #detail-page { background: var(--bg); }
+    .detail-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .back-btn {
+      font-size: 22px; background: none; border: none;
+      color: var(--text); cursor: pointer;
+      padding: 4px; border-radius: 6px;
+      min-width: 44px; min-height: 44px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .back-btn:active { background: var(--card); }
+    .detail-name { font-size: 18px; font-weight: 700; flex: 1; }
+    .detail-actions { display: flex; gap: 8px; }
+    .detail-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .detail-btn:active { border-color: var(--gold); }
+    .detail-btn.danger { color: var(--red); border-color: rgba(231,76,60,0.3); }
+    .detail-content { flex: 1; overflow-y: auto; padding: 12px; }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .info-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .info-label { font-size: 11px; color: var(--text-dim); margin-bottom: 3px; }
+    .info-value { font-size: 14px; color: var(--text); word-break: break-all; }
+    .soace-block {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .soace-text {
+      font-size: 13px; color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+    .resistance-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .timeline-item {
+      display: flex; gap: 10px;
+      padding-bottom: 12px;
+      position: relative;
+    }
+    .timeline-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 11px; top: 22px; bottom: 0;
+      width: 1px;
+      background: var(--border);
+    }
+    .timeline-dot {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--gold-dim);
+      border: 2px solid var(--gold);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+    }
+    .timeline-body { flex: 1; }
+    .timeline-date { font-size: 11px; color: var(--text-dim); margin-bottom: 2px; }
+    .timeline-text { font-size: 13px; color: var(--text); white-space: pre-wrap; line-height: 1.5; }
+
+    /* ===== FORM PAGE ===== */
+    #form-page { background: var(--bg); }
+    .form-content { flex: 1; overflow-y: auto; }
+    .form-inner { padding: 12px 12px 100px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      font-size: 13px; color: var(--text-dim);
+      margin-bottom: 6px; display: block;
+    }
+    .form-label .required { color: var(--red); margin-left: 2px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--gold); }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--text-dim); }
+    .form-input:disabled, .form-select:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .form-group { flex: 1; }
+    .input-sfx {
+      position: relative;
+    }
+    .input-sfx input { padding-right: 36px; }
+    .input-sfx::after {
+      content: attr(data-s);
+      position: absolute;
+      right: 14px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px; color: var(--text-dim);
+      pointer-events: none;
+    }
+    .smart-paste-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px;
+      background: rgba(201,169,98,0.12);
+      border: 1px dashed var(--gold);
+      border-radius: 10px;
+      color: var(--gold);
+      font-size: 14px;
+      cursor: pointer;
+      margin-bottom: 14px;
+      width: 100%;
+      transition: background 0.2s;
+    }
+    .smart-paste-btn:active { background: rgba(201,169,98,0.22); }
+    .form-submit {
+      width: 100%;
+      padding: 16px;
+      background: var(--gold);
+      color: #111;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px; font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
+    .form-submit:active { opacity: 0.8; }
+    .form-delete {
+      width: 100%;
+      padding: 14px;
+      background: rgba(231,76,60,0.1);
+      border: 1px solid rgba(231,76,60,0.3);
+      border-radius: 12px;
+      color: var(--red);
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.2s;
+    }
+    .form-delete:active { background: rgba(231,76,60,0.2); }
+
+    /* ===== TOAST ===== */
+    #toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 14px; font-weight: 500;
+      z-index: 99999;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+      max-width: 90vw;
+      text-align: center;
+    }
+    #toast.show { opacity: 1; }
+    #toast.success { background: #1a6b3a; color: #fff; }
+    #toast.error { background: #7b1f1f; color: #fff; }
+    #toast.info { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+
+    /* ===== FAB ===== */
+    .fab {
+      position: fixed;
+      right: 20px; bottom: calc(70px + var(--safe));
+      width: 54px; height: 54px;
+      border-radius: 50%;
+      background: var(--gold);
+      color: #111;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+      transition: opacity 0.2s;
+    }
+    .fab:active { opacity: 0.8; }
+
+    /* ===== EMPTY ===== */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+    }
+    .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+    .empty-state p { font-size: 14px; }
+
+    /* ===== RADIO GROUP ===== */
+    .radio-group { display: flex; gap: 8px; }
+    .radio-option {
+      flex: 1; padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--text-dim);
+      font-size: 13px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .radio-option.active {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: var(--gold-dim);
+    }
+    .radio-option input { display: none; }
+
+    /* ===== PARSE PREVIEW ===== */
+    #parse-preview {
+      background: var(--card);
+      border: 1px solid var(--gold);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      display: none;
+    }
+    #parse-preview.show { display: block; }
+    .pp-title { font-weight: 600; color: var(--gold); margin-bottom: 10px; }
+    .pp-row { display: flex; gap: 8px; margin-bottom: 4px; }
+    .pp-key { color: var(--text-dim); width: 90px; flex-shrink: 0; }
+    .pp-val { color: var(--text); flex: 1; word-break: break-all; }
+    .pp-confirm { margin-top: 10px; display: flex; gap: 8px; }
+    .pp-btn {
+      flex: 1; padding: 10px;
+      border-radius: 8px; border: none;
+      font-size: 14px; cursor: pointer;
+      font-weight: 600;
+    }
+    .pp-btn.ok { background: var(--gold); color: #111; }
+    .pp-btn.cancel { background: var(--card2); color: var(--text); }
+
+    /* ===== CONFIRM DIALOG ===== */
+    #confirm-dialog {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none; align-items: center; justify-content: center;
+      z-index: 99998;
+      padding: 20px;
+    }
+    #confirm-dialog.show { display: flex; }
+    .dialog-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 320px; width: 100%;
+      text-align: center;
+    }
+    .dialog-title { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+    .dialog-body { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.5; }
+    .dialog-btns { display: flex; gap: 10px; }
+    .dialog-btns button {
+      flex: 1; padding: 12px;
+      border-radius: 10px; border: none;
+      font-size: 15px; cursor: pointer;
+      font-weight: 600;
+    }
+    .dialog-btns .d-cancel { background: var(--card2); color: var(--text); }
+    .dialog-btns .d-confirm { background: var(--red); color: #fff; }
+
+    /* ===== WORKBENCH ===== */
+    .workbench-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .wb-header {
+      padding: 12px 14px;
+      font-size: 14px; font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .wb-list { }
+    .wb-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .wb-item:last-child { border-bottom: none; }
+    .wb-item:active { background: rgba(255,255,255,0.03); }
+    .wb-item-right { margin-left: auto; flex-shrink: 0; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-logo">案场销管</div>
+  <div class="login-sub">中山御宸 · 案场管理系统</div>
+  <div class="login-form">
+    <div class="login-role-group">
+      <button class="role-btn active" data-role="置业顾问">置业顾问</button>
+      <button class="role-btn" data-role="销售经理">销售经理</button>
+    </div>
+    <div style="position:relative;">
+      <input type="text" id="login-name" class="login-input" placeholder="请输入姓名" autocomplete="off" list="cn-list">
+      <datalist id="cn-list">
+        <option value="崔妮"><option value="黄志聪"><option value="赵明">
+        <option value="毛雨文江华"><option value="蒋英">
+      </datalist>
+    </div>
+    <input type="password" id="login-pwd" class="login-input" placeholder="请输入密码" autocomplete="off">
+    <div id="login-error" style="color:#e74c3c;font-size:12px;text-align:center;display:none;margin-top:-8px"></div>
+    <button class="login-submit" id="login-btn">进入系统</button>
+    <div style="text-align:center;margin-top:20px">
+      <button onclick="showAdminLogin()" style="background:none;border:none;color:#555;font-size:12px;cursor:pointer;text-decoration:underline">管理员登录</button>
+    </div>
+    <div style="text-align:center;margin-top:14px;font-size:11px;color:#888;line-height:1.5;padding:10px;background:#fafafa;border-radius:8px">
+      📱 扫码自动填入姓名（仍需输入密码），请向管理员索取您的专属链接。
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div id="admin-login-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99998;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#f8f8f8;border:1px solid #C9A962;border-radius:16px;padding:28px 24px;width:100%;max-width:340px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:32px;margin-bottom:8px">🔐</div>
+      <div style="color:#C9A962;font-size:16px;font-weight:600">管理员登录</div>
+    </div>
+    <input type="password" id="admin-pwd-input" class="login-input" placeholder="请输入管理员密码" style="margin-bottom:12px">
+    <div id="admin-login-error" style="color:#e74c3c;font-size:12px;text-align:center;display:none;margin-bottom:8px"></div>
+    <button class="login-submit" onclick="doAdminLogin()" style="margin-bottom:10px">登录</button>
+    <button onclick="closeAdminLogin()" style="width:100%;padding:12px;background:#f0f0f0;border:1px solid #e5e5e5;border-radius:12px;color:#888;font-size:14px;cursor:pointer">取消</button>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div id="topbar" class="hidden">
+  <div id="topbar-title">工作台</div>
+  <button class="topbar-btn" id="logout-btn" title="退出">⏻</button>
+</div>
+
+<!-- PAGES -->
+<div id="page-workbench" class="page">
+  <div class="scroll-area" id="wb-scroll"></div>
+  <button class="fab" id="fab-add">+</button>
+</div>
+
+<div id="page-customers" class="page">
+  <div style="padding:10px 12px 0;">
+    <div class="cust-tabs" id="cust-tabs">
+      <button class="cust-tab active" id="tab-mine">👥 我的客户</button>
+      <button class="cust-tab" id="tab-pool">🏊 公共池</button>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="search-input" class="search-input" placeholder="搜索姓名/电话/备注...">
+      <select id="level-filter" class="filter-select">
+        <option value="">全部</option>
+        <option value="A">A级</option>
+        <option value="B">B级</option>
+        <option value="C">C级</option>
+        <option value="D">D级</option>
+      </select>
+    </div>
+  </div>
+  <div class="scroll-area" id="cust-scroll">
+    <div id="customer-list"></div>
+  </div>
+  <button class="fab" id="fab-add2">+</button>
+</div>
+
+
+<div id="page-stats" class="page">
+  <div class="scroll-area" id="stats-scroll"></div>
+</div>
+
+<div id="page-my" class="page">
+  <div class="scroll-area" id="my-scroll"></div>
+</div>
+
+<div id="page-analysis" class="page">
+  <div class="scroll-area" id="analysis-scroll"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav id="bottom-nav" class="hidden">
+  <button class="nav-item active" data-page="workbench">
+    <span class="nav-icon">🏠</span><span>工作台</span>
+  </button>
+  <button class="nav-item" data-page="customers">
+    <span class="nav-icon">👥</span><span>客户</span>
+  </button>
+  <button class="nav-item" data-page="stats">
+    <span class="nav-icon">📊</span><span>统计</span>
+  </button>
+  <button class="nav-item" id="nav-analysis" data-page="analysis">
+    <span class="nav-icon">📋</span><span>梳理表</span>
+  </button>
+  <button class="nav-item" data-page="my">
+    <span class="nav-icon">👤</span><span>我的</span>
+  </button>
+</nav>
+
+<!-- DETAIL PAGE -->
+<div id="detail-page" class="page" style="position:fixed;inset:0;z-index:500;background:var(--bg);">
+  <div class="detail-header">
+    <button class="back-btn" id="detail-back">←</button>
+    <div class="detail-name" id="detail-name"></div>
+    <div class="detail-actions">
+      <button class="detail-btn" id="detail-edit">编辑</button>
+      <button class="detail-btn" id="detail-pool" style="display:none;">🏊 移入公共池</button>
+      <button class="detail-btn" id="detail-claim" style="display:none;">🎣 领取</button>
+      <button class="detail-btn danger" id="detail-del">删除</button>
+      <button class="detail-btn" id="detail-price" style="border-color:var(--gold);color:var(--gold);">💰 算价格</button>
+    </div>
+  </div>
+  <div class="detail-content" id="detail-content"></div>
+</div>
+
+<!-- FORM PAGE -->
+<div id="form-page" class="page" style="position:fixed;inset:0;z-index:500;background:var(--bg);">
+  <div class="detail-header">
+    <button class="back-btn" id="form-back">←</button>
+    <div class="detail-name" id="form-title">新增客户</div>
+  </div>
+  <div class="form-content" id="form-content"></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- CONFIRM -->
+<div id="confirm-dialog">
+  <div class="dialog-box">
+    <div class="dialog-title" id="cd-title"></div>
+    <div class="dialog-body" id="cd-body"></div>
+    <div class="dialog-btns">
+      <button class="d-cancel" id="cd-cancel">取消</button>
+      <button class="d-confirm" id="cd-confirm">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ================================================================
+// UTILITY
+// ================================================================
+const STORAGE_KEY = 'yuchen_crm_v2';
+
+function uuid() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+function fDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+}
+function fDateTime(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  return fDate(d) + ' ' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+}
+function daysBetween(d1, d2) {
+  const a = new Date(d1); a.setHours(0,0,0,0);
+  const b = new Date(d2); b.setHours(0,0,0,0);
+  return Math.floor((a - b) / 86400000);
+}
+function today() { return fDate(new Date()); }
+function maskPhone(p) {
+  if (!p || p.length < 7) return p || '';
+  return p.slice(0,3) + '****' + p.slice(-4);
+}
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+function escRaw(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toast(msg, type) {
+  type = type || 'success';
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = type + ' show';
+  clearTimeout(t._t);
+  t._t = setTimeout(function() { t.className = ''; }, 2200);
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); toast('✅ 已复制', 'success'); }
+  catch(e) { toast('复制失败，请手动选择链接', 'err'); }
+  document.body.removeChild(ta);
+}
+
+function confirmDlg(title, body, onOK) {
+  document.getElementById('cd-title').textContent = title;
+  document.getElementById('cd-body').textContent = body;
+  document.getElementById('confirm-dialog').classList.add('show');
+  document.getElementById('cd-confirm').onclick = function() {
+    document.getElementById('confirm-dialog').classList.remove('show');
+    if (onOK) onOK();
+  };
+  document.getElementById('cd-cancel').onclick = function() {
+    document.getElementById('confirm-dialog').classList.remove('show');
+  };
+}
+
+// ================================================================
+// DATA
+// ================================================================
+var SALES_STAGES = [
+  { key: '问询', label: '问询', color: '#888', icon: '💬' },
+  { key: '来访', label: '来访', color: '#3498db', icon: '🚪' },
+  { key: '认筹', label: '认筹', color: '#C9A962', icon: '📒' },
+  { key: '认购', label: '认购', color: '#e67e22', icon: '📌' },
+  { key: '签约', label: '签约', color: '#2ecc71', icon: '🏆' }
+];
+var FOLLOWUP_METHODS = ['来电','来访','去电','微信','短信'];
+var DEFAULT_SETTINGS = { autoPoolDays: 30, followupReminder: 7 };
+
+var CHANNELS = ['自访','中介','老带新','线上','电话','渠道外展'];
+var CHAN_MAP = {
+  '自来':'自访','自己':'自访','路过':'自访','避雨':'自访','打卡':'自访',
+  '中介':'中介','代理':'中介','分销':'中介',
+  '老带新':'老带新','老介新':'老带新','朋友介绍':'老带新','转介绍':'老带新',
+  '线上':'线上','网络':'线上','微信':'线上',
+  '电话':'电话','电销':'电话',
+  '外展':'渠道外展','渠道':'渠道外展','展业':'渠道外展'
+};
+
+var PROPS = [
+  {name:'1栋 01户型',area:'143㎡',type:'四房两厅两卫',floor:'1-18层',price:'约320万/套',status:'在售',stock:'12套'},
+  {name:'1栋 02户型',area:'125㎡',type:'四房两厅两卫',floor:'1-18层',price:'约280万/套',status:'在售',stock:'8套'},
+  {name:'2栋 01户型',area:'168㎡',type:'五房两厅三卫',floor:'1-26层',price:'约400万/套',status:'在售',stock:'6套'},
+  {name:'2栋 02户型',area:'110㎡',type:'三房两厅两卫',floor:'1-26层',price:'约250万/套',status:'热销',stock:'3套'},
+  {name:'3栋 01户型',area:'180㎡',type:'五房两厅三卫',floor:'1-30层',price:'约450万/套',status:'在售',stock:'18套'},
+  {name:'叠拼别墅 A型',area:'200㎡',type:'上下叠拼',floor:'1-5层',price:'约600万/套',status:'稀缺',stock:'2套'},
+  {name:'临街商铺 01',area:'60㎡',type:'一层街铺',floor:'1层',price:'约280万/套',status:'在售',stock:'4套'},
+];
+
+function makeDemo() {
+  var now = Date.now();
+  return [
+    {
+      id: uuid(), name: '徐女士', phone: '13812345601',
+      consultant: '崔妮', channel: '自访', level: 'C',
+      salesStage: '问询', secondaryPhone: '', birthday: '',
+      followUps: [
+        { time: new Date(now - 86400000*2).toISOString(), method: '来电', content: '客户回访，告知本周特惠邀约周末到访', nextFollowUp: fDate(new Date(now + 86400000*3)), operator: '崔妮' }
+      ],
+      history: [],
+      calculated: false, fullProcess: false,
+      job: '职工', age: '40左右', area: '130', budget: '',
+      residence: '凯茵新城', competitor: '等润宸',
+      visitDuration: '40',
+      visitTime: new Date(now - 86400000*3).toISOString().slice(0,16),
+      revisitCount: 1,
+      soace: '朋友陪同来看，朋友以前做中介的，说要等润宸二期。客户对面积要求130左右，首付预算有限，觉得超预算。客户自访，进门避雨，看房意愿一般。',
+      note: '客户意向较弱，需持续跟进',
+      followUpDate: fDate(new Date(now - 86400000*2)),
+      followUpNote: '告知本周特惠，邀约周末再来看',
+      resistanceTags: ['预算不足'], solutions: ['制造紧迫感','推荐替代户型'],
+      createdAt: new Date(now - 86400000*3).toISOString()
+    },
+    {
+      id: uuid(), name: '陈先生', phone: '13812345602',
+      consultant: '崔妮', channel: '中介', level: 'B',
+      salesStage: '来访', secondaryPhone: '13912345002', birthday: '',
+      followUps: [
+        { time: new Date(now - 86400000*3).toISOString(), method: '来访', content: '中介带访，参观样板间，意向143㎡', nextFollowUp: fDate(new Date(now + 86400000*4)), operator: '崔妮' },
+        { time: new Date(now - 86400000*1).toISOString(), method: '微信', content: '发送算价单和户型资料，客户回复"先看看"', nextFollowUp: fDate(new Date(now + 86400000*5)), operator: '崔妮' }
+      ],
+      history: [],
+      calculated: false, fullProcess: false,
+      job: '私企业主', age: '35左右', area: '150', budget: '300万',
+      residence: '远洋城', competitor: '看过润珑',
+      visitDuration: '60',
+      visitTime: new Date(now - 86400000*1).toISOString().slice(0,16),
+      revisitCount: 2,
+      soace: '中介带访，之前看过润珑，对比后对项目配套较满意。资金基本到位，但对价格敏感，希望有折扣。老婆陪同来，决策需两人同意。',
+      note: '复访客户，中介维护好',
+      followUpDate: fDate(new Date(now + 86400000*5)),
+      followUpNote: '等中介反馈，约下次带老婆一起来',
+      resistanceTags: ['预算不足'], solutions: ['引导分期付款'],
+      createdAt: new Date(now - 86400000*5).toISOString()
+    },
+    {
+      id: uuid(), name: '李小姐', phone: '13812345603',
+      consultant: '赵明', channel: '老带新', level: 'A',
+      salesStage: '签约', secondaryPhone: '', birthday: '1990-06-15',
+      followUps: [
+        { time: new Date(now - 86400000*14).toISOString(), method: '来访', content: '老业主推荐首访，全流程算价，老公陪同', nextFollowUp: fDate(new Date(now - 86400000*7)), operator: '赵明' },
+        { time: new Date(now - 86400000*10).toISOString(), method: '去电', content: '确认资金到位，安排签约', nextFollowUp: fDate(new Date(now - 86400000*8)), operator: '赵明' },
+        { time: new Date(now - 86400000*5).toISOString(), method: '来访', content: '现场签约完成', nextFollowUp: fDate(new Date(now - 86400000*2)), operator: '赵明' }
+      ],
+      history: [],
+      calculated: true, fullProcess: true,
+      job: '公司高管', age: '30左右', area: '143', budget: '400万',
+      residence: '敏捷锦绣阳光', competitor: '',
+      visitDuration: '90',
+      visitTime: new Date(now - 86400000*7).toISOString().slice(0,16),
+      revisitCount: 3,
+      soace: '老业主推荐，客户资金充足，购房目的为改善自住。对品质要求高，要求全流程算价后当天认购。老公也来现场看过，都满意。对比万科，觉得项目性价比更高。',
+      note: '高意向A类客户，已认购，签合同',
+      followUpDate: fDate(new Date(now - 86400000*3)),
+      followUpNote: '签约后回访，感谢转介绍',
+      dealStatus: '签约', dealDate: fDate(new Date(now - 86400000*10)),
+      resistanceTags: [], solutions: [],
+      createdAt: new Date(now - 86400000*14).toISOString()
+    }
+  ];
+}
+
+var DB = { version: 3.2, currentUser: null, customers: [], approvedUsers: [], pendingUsers: [] };
+
+function saveDB() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e){}
+}
+function loadDB() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      DB = JSON.parse(raw);
+      if (!DB.customers) DB.customers = [];
+      // 兼容旧数据
+      DB.customers.forEach(function(c){
+        if (!c.dealStatus) c.dealStatus = c.level === 'A' ? '认购' : '未成交';
+        if (!c.dealDate) c.dealDate = '';
+        if (!c.inPool) c.inPool = false;
+        if (!c.salesStage) c.salesStage = c.dealStatus === '签约' ? '签约' : (c.dealStatus === '认购' ? '认购' : (c.level === 'A' || c.level === 'B' ? '来访' : '问询'));
+        if (!c.secondaryPhone) c.secondaryPhone = '';
+        if (!c.birthday) c.birthday = '';
+        if (!c.followUps) c.followUps = [];
+        if (!c.history) c.history = [];
+      });
+      if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
+    } else {
+      DB.settings = Object.assign({}, DEFAULT_SETTINGS);
+      DB.customers = makeDemo();
+      saveDB();
+    }
+  } catch(e) {
+    DB.settings = Object.assign({}, DEFAULT_SETTINGS);
+    DB.customers = makeDemo();
+    saveDB();
+  }
+}
+function getMyCustomers() {
+  if (!DB.currentUser) return [];
+  // 自动初始化管理员审批记录
+  if (!DB.approvedUsers) DB.approvedUsers = [];
+  var isCheng = DB.approvedUsers.find(function(u){ return u.name==='程华军'; });
+  if (!isCheng) {
+    DB.approvedUsers.unshift({name:'程华军', role:'销售经理', approvedAt:'2026-08-05', approvedBy:'系统'});
+  }
+  if (!DB.pendingUsers) DB.pendingUsers = [];
+  if (DB.currentUser.role === '销售经理') return DB.customers;
+  // 置业顾问：只看到自己的客户（不含公共池）
+  return DB.customers.filter(function(c){ return c.consultant === DB.currentUser.name && !c.inPool; });
+}
+// 公共池客户：所有顾问可见可领取，经理可见可指派
+function getPoolCustomers() {
+  if (!DB.currentUser) return [];
+  return DB.customers.filter(function(c){ return c.inPool; });
+}
+// 销售经理：看每个人的客户（含公共池外所有）
+function getAllAssignedCustomers() {
+  if (!DB.currentUser) return [];
+  if (DB.currentUser.role !== '销售经理') return [];
+  return DB.customers.filter(function(c){ return !c.inPool; });
+}
+
+// ================================================================
+// v3.5.0 历史/跟进 helper
+// ================================================================
+function addHistory(c, action, detail) {
+  if (!c.history) c.history = [];
+  c.history.unshift({
+    time: new Date().toISOString(),
+    action: action,
+    detail: detail || '',
+    operator: DB.currentUser ? DB.currentUser.name : '系统'
+  });
+}
+function addFollowUp(c, method, content, nextDate) {
+  if (!c.followUps) c.followUps = [];
+  var f = {
+    time: new Date().toISOString(),
+    method: method || '来电',
+    content: content || '',
+    nextFollowUp: nextDate || '',
+    operator: DB.currentUser ? DB.currentUser.name : '系统'
+  };
+  c.followUps.unshift(f);
+  // 同步最外层字段（兼容老逻辑）
+  c.followUpNote = content;
+  if (nextDate) c.followUpDate = nextDate;
+  addHistory(c, '添加跟进', method + ' · ' + (content || '').slice(0, 20));
+}
+function autoPoolCheck() {
+  if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
+  var days = DB.settings.autoPoolDays;
+  if (!days || days <= 0) return; // 0/未配置 = 不自动
+  var todayStr = today();
+  var moved = [];
+  DB.customers.forEach(function(c){
+    if (c.inPool) return;
+    if (!c.followUpDate) return; // 没设跟进日期的不动
+    var lastDate = c.followUps && c.followUps[0] ? c.followUps[0].time.slice(0,10) : c.followUpDate;
+    var d = daysBetween(todayStr, lastDate);
+    if (d > days) {
+      c.inPool = true;
+      c.poolTime = new Date().toISOString();
+      c.poolReason = '超' + d + '天未跟进（阈值' + days + '天）';
+      addHistory(c, '自动移入公共池', c.poolReason);
+      moved.push(c.name);
+    }
+  });
+  if (moved.length > 0) saveDB();
+  return moved;
+}
+
+// ================================================================
+// SOACE ANALYSIS
+// ================================================================
+function analyzeSOACE(text) {
+  if (!text) return { tags:[], analysis:'', solutions:[] };
+  var tags = [], solutions = [], t = text;
+  var addTag = function(name, level, icon, sol) {
+    if (!tags.find(function(x){ return x.name === name; })) {
+      tags.push({name:name, level:level, icon:icon});
+      if (sol) solutions.push(sol);
+    }
+  };
+  if (/超预算|太贵|贵|价格|首付|钱不够|预算不足|不够|贵了/.test(t))
+    addTag('预算不足','高','🔴','【引导分期/组合贷】帮助客户制定分阶段付款计划，降低首付压力，突出性价比和升值潜力');
+  if (/太大|面积大|不需要这么大|面积太大/.test(t))
+    addTag('面积不匹配','中','🟡','【推荐替代户型】根据需求推荐面积适中户型，解释空间灵活性和实际使用率');
+  if (/不着急|再看看|等等|不急|不急着|观望/.test(t))
+    addTag('购买时机不对','中','🟡','【制造紧迫感】告知项目本周特惠仅剩X套，引导当日下定锁定优惠');
+  if (/对比|竞品|润珑|绿城|万科|恒大|中海|龙湖/.test(t))
+    addTag('竞品对比','中','🟡','【差异化卖点】梳理本项目独特优势，做竞品对比表，突出核心价值点');
+  if (/等润宸|等二期|等新盘|等开盘|等推出/.test(t))
+    addTag('等候竞品/新品','中','🟡','【时间成本对比】对比竞品入市时间，本项目已是准现房，等待成本远超实际差价');
+  if (/朋友|中介|陪同|老公|老婆|家人/.test(t) && !/中介带访/.test(t))
+    addTag('决策人非本人','中','🟡','【约见决策人】尝试单独约见实际决策人，提供上门接送服务');
+  if (/自访|路过|避雨|打卡|随便看看/.test(t))
+    addTag('自然流失风险','低','🟢','【快速建立好感】24小时内发送项目资料，保持联系频率，邀约参加暖场活动');
+  if (/没名额|没资格|限购|资质|不符合/.test(t))
+    addTag('购房资格问题','高','🔴','【政策方案】详细了解限购政策，提供落户/社保解决方案');
+  if (/户型|朝向|采光|格局|设计/.test(t))
+    addTag('产品疑虑','低','🟢','【产品讲解】安排深度样板间参观，详细讲解户型设计和材料工艺');
+  if (solutions.length === 0)
+    solutions.push('【持续维护】保持定期联系，发送项目最新动态和优惠信息，等待合适时机促成');
+  solutions = solutions.slice(0,3);
+  var analysis = '';
+  if (tags.length > 0) {
+    var lines = tags.map(function(tag){ return '| ' + tag.icon + ' ' + tag.name + ' (' + tag.level + ')'; }).join('\n');
+    analysis = '┌─────────────────────────────┐\n' + lines + '\n└─────────────────────────────┘';
+  }
+  return { tags: tags, analysis: analysis, solutions: solutions };
+}
+
+function renderResistanceBox(analysis, solutions) {
+  if (!analysis && (!solutions || solutions.length === 0)) return '';
+  var html = '<div class="resistance-box">';
+  html += '<div style="color:var(--gold);font-weight:600;margin-bottom:10px;">🛡️ 抗性分析</div>';
+  if (analysis) html += '<div style="margin-bottom:14px;white-space:pre;font-size:13px;">' + escRaw(analysis) + '</div>';
+  html += '<div style="color:var(--gold);font-weight:600;margin-bottom:10px;">💡 解决方案</div>';
+  solutions.forEach(function(s,i){
+    html += '<div style="margin-bottom:8px;padding:8px 10px;background:var(--card2);border-radius:8px;line-height:1.5;">' + (i+1) + '. ' + escRaw(s) + '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+// ================================================================
+// SMART PASTE
+// ================================================================
+function parseClipboard(text) {
+  var r = {};
+  if (!text) return r;
+  var m;
+  m = text.match(/(?:置业顾问|顾问)[:：]\s*(.+)/); if (m) r.consultant = m[1].trim();
+  m = text.match(/(?:客户姓名|客户[:：]|姓名)[:：]\s*(.+)/); if (m) r.name = m[1].trim();
+  m = text.match(/(?:电话|手机)[:：]\s*(.+)/); if (m) r.phone = m[1].replace(/[\s\-–]/g,'').trim();
+  m = text.match(/(?:接待时间|接待时长|时长)[:：]\s*(\d+)/); if (m) r.visitDuration = m[1];
+  if (/是否算价[:：]\s*是/.test(text)) r.calculated = true;
+  else if (/是否算价[:：]\s*否/.test(text)) r.calculated = false;
+  if (/是否全流程[:：]\s*是/.test(text) || /全流程[:：]\s*是/.test(text)) r.fullProcess = true;
+  else if (/是否全流程[:：]\s*否/.test(text) || /全流程[:：]\s*否/.test(text)) r.fullProcess = false;
+  m = text.match(/(?:来访渠道|渠道)[:：]\s*(.+)/); if (m) {
+    var raw = m[1].trim();
+    r.channel = CHAN_MAP[raw] || (CHANNELS.find(function(c){ return raw.indexOf(c) !== -1; })) || raw;
+  }
+  m = text.match(/(?:客户等级|等级)[:：]\s*([A-Da-d][-+]?)/); if (m) r.level = m[1].toUpperCase().replace(/[^A-D]/,'');
+  m = text.match(/(?:职业)[:：]\s*(.+)/); if (m) r.job = m[1].trim();
+  m = text.match(/(?:年龄)[:：]\s*(\d+)/); if (m) r.age = m[1];
+  m = text.match(/(?:居住小区|小区)[:：]\s*(.+)/); if (m) r.residence = m[1].trim();
+  m = text.match(/(?:对比项目|竞品)[:：]\s*(.+)/); if (m) r.competitor = m[1].trim();
+  m = text.match(/(?:意向面积|面积)[:：]\s*(\d+)/); if (m) r.area = m[1];
+  m = text.match(/(?:意向栋数|栋数)[:：]\s*(.+)/); if (m) r.buildingIntent = m[1].trim();
+  m = text.match(/(?:客户情况|SOACE|情况)[:：]?(.*)$/s); if (m) r.soace = m[1].trim();
+  return r;
+}
+
+function smartPaste() {
+  if (!navigator.clipboard || !navigator.clipboard.readText) {
+    toast('浏览器不支持剪贴板，请手动复制后粘贴', 'error');
+    return;
+  }
+  navigator.clipboard.readText().then(function(text) {
+    var parsed = parseClipboard(text);
+    var count = Object.keys(parsed).length;
+    if (count === 0) { toast('未识别到有效字段，请检查格式', 'error'); return; }
+    showParsePreview(parsed, count);
+  }).catch(function() {
+    toast('读取剪贴板失败，请检查浏览器权限', 'error');
+  });
+}
+
+function showParsePreview(parsed, count) {
+  var preview = document.getElementById('parse-preview');
+  var fields = [['name','姓名'],['phone','电话'],['consultant','顾问'],['channel','渠道'],
+    ['level','等级'],['calculated','算价'],['fullProcess','全流程'],['job','职业'],
+    ['age','年龄'],['area','意向面积'],['residence','居住小区'],['competitor','对比项目'],['soace','SOACE']];
+  var html = '<div class="pp-title">✅ 已识别 ' + count + ' 个字段，确认填充？</div>';
+  fields.forEach(function(f) {
+    var key = f[0], label = f[1];
+    if (parsed[key] !== undefined) {
+      var val = parsed[key];
+      if (key === 'calculated' || key === 'fullProcess') val = val ? '是' : '否';
+      html += '<div class="pp-row"><span class="pp-key">' + label + '</span><span class="pp-val">' + escRaw(String(val).slice(0,100)) + '</span></div>';
+    }
+  });
+  html += '<div class="pp-confirm">';
+  html += '<button class="pp-btn ok" id="pp-ok">确认填充</button>';
+  html += '<button class="pp-btn cancel" id="pp-cancel">取消</button>';
+  html += '</div>';
+  preview.innerHTML = html;
+  preview.classList.add('show');
+  document.getElementById('pp-ok').onclick = function() {
+    applyParsed(parsed);
+    preview.classList.remove('show');
+    toast('✅ 已填充 ' + count + ' 个字段', 'success');
+  };
+  document.getElementById('pp-cancel').onclick = function() { preview.classList.remove('show'); };
+}
+
+function applyParsed(parsed) {
+  var map = {
+    'name':'f-name','phone':'f-phone','consultant':'f-consultant',
+    'channel':'f-channel','level':'f-level','job':'f-job',
+    'age':'f-age','area':'f-area','residence':'f-residence',
+    'competitor':'f-competitor','visitDuration':'f-duration'
+  };
+  Object.keys(map).forEach(function(key) {
+    if (parsed[key] !== undefined) {
+      var el = document.getElementById(map[key]);
+      if (el) el.value = parsed[key];
+    }
+  });
+  if (parsed.calculated !== undefined) {
+    document.querySelectorAll('[name="f-calc"]').forEach(function(r) {
+      var active = (parsed.calculated && r.value === 'true') || (!parsed.calculated && r.value === 'false');
+      r.closest('.radio-option').classList.toggle('active', active);
+      r.checked = active;
+    });
+  }
+  if (parsed.fullProcess !== undefined) {
+    document.querySelectorAll('[name="f-fp"]').forEach(function(r) {
+      var active = (parsed.fullProcess && r.value === 'true') || (!parsed.fullProcess && r.value === 'false');
+      r.closest('.radio-option').classList.toggle('active', active);
+      r.checked = active;
+    });
+  }
+  if (parsed.soace) {
+    var ta = document.getElementById('f-soace');
+    if (ta) ta.value = parsed.soace;
+  }
+}
+
+// ================================================================
+// RENDER HELPERS
+// ================================================================
+function getFollowupStatus(c) {
+  if (!c.followUpDate) return { cls:'tag-following', text:'✅ 跟进中' };
+  var d = daysBetween(c.followUpDate, today());
+  if (d > 0) return { cls:'tag-overdue', text:'⏸ 过期' + d + '天' };
+  if (d === 0) return { cls:'tag-new', text:'🆕 今天待跟进' };
+  if (d >= -3) return { cls:'tag-due', text:'🔔 即将到期' };
+  return { cls:'tag-following', text:'✅ ' + Math.abs(d) + '天后' };
+}
+
+function renderCustomerCard(c) {
+  var status = getFollowupStatus(c);
+  var daysNew = daysBetween(today(), c.createdAt ? c.createdAt.slice(0,10) : today());
+  var isNew = daysNew <= 2;
+  var consultantHtml = (DB.currentUser && DB.currentUser.role === '销售经理')
+    ? '<span style="font-size:11px;color:var(--gold);">👤 ' + escRaw(c.consultant) + '</span>' : '';
+  var noteHtml = (c.note || c.followUpNote)
+    ? '<div class="card-note">📝 ' + escRaw(c.note || c.followUpNote || '') + '</div>' : '';
+  var channelBadge = c.channel ? '<span class="tag" style="background:var(--card2);color:var(--text-dim)">' + escRaw(c.channel) + '</span>' : '';
+  var tagsHtml = '';
+  if (c.inPool) {
+    tagsHtml += '<span class="pool-badge">🏊 公共池</span>';
+  } else {
+    var statusTag = isNew && !status.text.includes('过期')
+      ? '<span class="tag tag-new">🆕 新登记</span>'
+      : '<span class="tag ' + status.cls + '">' + status.text + '</span>';
+    tagsHtml += statusTag;
+  }
+  var stageInfo = SALES_STAGES.find(function(s){ return s.key === c.salesStage; }) || SALES_STAGES[0];
+  tagsHtml += '<span class="stage-badge stage-' + c.salesStage + '">' + stageInfo.icon + ' ' + c.salesStage + '</span>';
+  if (c.followUps && c.followUps.length > 0) {
+    var last = c.followUps[0];
+    tagsHtml += '<span class="method-tag method-' + last.method + '">' + last.method + '</span>';
+  }
+  tagsHtml += channelBadge + consultantHtml;
+  return '<div class="customer-card" data-id="' + c.id + '">' +
+    '<div class="card-row1">' +
+      '<span class="level-badge ' + c.level + '">' + c.level + '</span>' +
+      '<div class="card-name">' + escRaw(c.name) + '</div>' +
+      '<div class="card-phone">' + escRaw(maskPhone(c.phone)) + '</div>' +
+    '</div>' +
+    '<div class="card-tags">' + tagsHtml + '</div>' +
+    '<div class="card-meta">' +
+      '<span>📅 录入 ' + (c.createdAt ? c.createdAt.slice(5,10) : '') + '</span>' +
+      (c.visitTime ? '<span>🏠 接待 ' + fDate(c.visitTime) + '</span>' : '') +
+      (c.residence ? '<span>🏘️ ' + escRaw(c.residence) + '</span>' : '') +
+    '</div>' + noteHtml +
+  '</div>';
+}
+
+var currentCustTab = 'mine';
+function renderCustomerList() {
+  var search = (document.getElementById('search-input').value || '').trim().toLowerCase();
+  var levelF = document.getElementById('level-filter').value;
+  var isPool = currentCustTab === 'pool';
+  var list;
+  if (isPool) {
+    list = getPoolCustomers();
+  } else {
+    list = getMyCustomers();
+    // 经理的"我的客户"tab 显示所有已分配客户
+    if (DB.currentUser && DB.currentUser.role === '销售经理') list = getAllAssignedCustomers();
+  }
+  list = list.filter(function(c) {
+    var matchL = !levelF || c.level === levelF;
+    var matchS = !search || c.name.toLowerCase().indexOf(search) !== -1
+      || c.phone.indexOf(search) !== -1
+      || (c.note||'').toLowerCase().indexOf(search) !== -1
+      || (c.soace||'').toLowerCase().indexOf(search) !== -1;
+    return matchL && matchS;
+  });
+  list.sort(function(a,b){
+    var ad = daysBetween(a.followUpDate || '9999', today());
+    var bd = daysBetween(b.followUpDate || '9999', today());
+    if (ad !== bd) return bd - ad;
+    return (b.createdAt||'').localeCompare(a.createdAt||'');
+  });
+  var container = document.getElementById('customer-list');
+  var tabElMine = document.getElementById('tab-mine');
+  var tabElPool = document.getElementById('tab-pool');
+  if (tabElMine) tabElMine.classList.toggle('active', !isPool);
+  if (tabElPool) tabElPool.classList.toggle('active', isPool);
+  if (list.length === 0) {
+    if (isPool) {
+      container.innerHTML = '<div class="pool-empty">🏊 公共池暂无客户<br><br><span style="font-size:12px;color:var(--text-dim);">不要的客户可移入公共池，其他顾问可领取跟进</span></div>';
+    } else {
+      container.innerHTML = '<div class="empty-state"><div class="es-icon">👥</div><p>暂无客户记录</p><p style="margin-top:6px;font-size:12px;">点击右下角 + 添加客户</p></div>';
+    }
+    return;
+  }
+  container.innerHTML = list.map(renderCustomerCard).join('');
+  container.querySelectorAll('.customer-card').forEach(function(card) {
+    card.addEventListener('click', function() { openDetail(card.dataset.id); });
+  });
+}
+function switchCustTab(tab) {
+  currentCustTab = tab;
+  renderCustomerList();
+}
+
+function renderWorkbench() {
+  var customers = getMyCustomers();
+  var todayStr = today();
+  // 自动公海池检测
+  autoPoolCheck();
+  // 今日待回访：24h 内新登记 + 今日到跟进日期
+  var todayFollowups = customers.filter(function(c){
+    if (c.inPool) return false;
+    if (!c.followUpDate) return false;
+    return c.followUpDate <= todayStr;
+  });
+  // 销售漏斗
+  var funnelData = SALES_STAGES.map(function(s){
+    return { stage: s, count: customers.filter(function(c){ return c.salesStage === s.key; }).length };
+  });
+  var funnelMax = Math.max.apply(null, funnelData.map(function(d){ return d.count; })) || 1;
+  var funnelHtml = '<div class="funnel"><div class="funnel-title">📊 销售漏斗</div>';
+  funnelData.forEach(function(d, i){
+    var pct = Math.round(d.count / funnelMax * 100);
+    var rate = i === 0 ? '' : '<span class="funnel-rate">' + (funnelData[i-1].count > 0 ? Math.round(d.count / funnelData[i-1].count * 100) : 0) + '%</span>';
+    funnelHtml += '<div class="funnel-row">' +
+      '<span class="funnel-label">' + d.stage.icon + ' ' + d.stage.key + '</span>' +
+      '<div class="funnel-bar-wrap"><div class="funnel-bar" style="width:' + pct + '%;background:' + d.stage.color + ';"></div></div>' +
+      '<span class="funnel-num">' + d.count + rate + '</span>' +
+    '</div>';
+  });
+  funnelHtml += '</div>';
+  var overdue = customers.filter(function(c){ return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; });
+  var dueSoon = customers.filter(function(c){ return c.followUpDate && daysBetween(c.followUpDate, todayStr) >= 0 && daysBetween(c.followUpDate, todayStr) <= 3 && !overdue.find(function(o){return o.id===c.id;}); });
+  var levelA = customers.filter(function(c){return c.level==='A';}).length;
+  var levelB = customers.filter(function(c){return c.level==='B';}).length;
+  var levelC = customers.filter(function(c){return c.level==='C';}).length;
+  var levelD = customers.filter(function(c){return c.level==='D';}).length;
+  var newThisWeek = customers.filter(function(c){ return c.createdAt && daysBetween(todayStr, c.createdAt.slice(0,10)) <= 7; }).length;
+
+  var html = funnelHtml + '<div class="stats-grid">' +
+'<div class="stat-card stat-clickable" onclick="showStatList(customers.length,\'所有\')"><div class="stat-num">' + customers.length + '></div><div class="stat-label">我的客户总数</div><div class="stat-tap">点击查看 ›</div></div> ' +
+'<div class="stat-card stat-clickable" onclick="showStatList(overdue.length,\'逾期\')"><div class="stat-num" style="color:' + (overdue.length>0?'var(--red)':'var(--green)') + '">' + overdue.length + '</div><div class="stat-label">逾期未跟进</div><div class="stat-tap">点击查看 ›</div></div> ' +
+'<div class="stat-card stat-clickable" onclick="showStatList(levelA,\'A级\')"><div class="stat-num" style="color:var(--gold)">' + levelA + '</div><div class="stat-label">A级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(levelB,\'B级\')&gt;"><div class="stat-num" style="color:var(--blue)">' + levelB + '</div><div class="stat-label">B级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(levelC,\'C级\')&gt;"><div class="stat-num" style="color:var(--gray)">' + levelC + '</div><div class="stat-label">C级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(levelD,\'D级\')&gt;"><div class="stat-num" style="color:var(--orange)">' + levelD + '</div><div class="stat-label">D级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(newThisWeek,\'本周新增\')&gt;"><div class="stat-num" style="color:var(--green)">' + newThisWeek + '</div><div class="stat-label">本周新增</div><div class="stat-tap">点击查看 ›</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(dueSoon.length,\'3天内待跟进\')&gt;"><div class="stat-num" style="color:' + (dueSoon.length>0?'var(--yellow)':'var(--text-dim)') + '">' + dueSoon.length + '</div><div class="stat-label">3天内待跟进</div><div class="stat-tap">点击查看 ›</div></div> ' +
+  '</div>';
+
+  if (todayFollowups.length > 0) {
+    html += '<div class="section-title">🔥 今日待回访 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(231,76,60,0.2);color:var(--red)">' + todayFollowups.length + '</span></div>';
+    html += '<div class="workbench-section"><div class="wb-list">';
+    todayFollowups.slice(0, 5).forEach(function(c) {
+      html += '<div class="wb-item" data-id="' + c.id + '">' +
+        '<span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escRaw(c.name) + '</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '需今日跟进') + '</div>' +
+        '</div>' +
+        '<span class="tag tag-due">🔥 今日</span>' +
+      '</div>';
+    });
+    html += '</div></div>';
+  }
+  if (overdue.length > 0) {
+    html += '<div class="section-title">⚠️ 逾期未跟进 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(231,76,60,0.2);color:var(--red)">' + overdue.length + '</span></div>';
+    html += '<div class="workbench-section"><div class="wb-list">';
+    overdue.forEach(function(c) {
+      var d = daysBetween(c.followUpDate, todayStr);
+      html += '<div class="wb-item" data-id="' + c.id + '">' +
+        '<span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escRaw(c.name) + '</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);">逾期 ' + d + ' 天 · ' + escRaw(c.followUpNote || c.note || '') + '</div>' +
+        '</div>' +
+        '<span class="tag tag-overdue">⏸ ' + d + '天</span>' +
+      '</div>';
+    });
+    html += '</div></div>';
+  }
+  if (dueSoon.length > 0) {
+    html += '<div class="section-title">🔔 即将到期 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(243,156,18,0.2);color:var(--yellow)">' + dueSoon.length + '</span></div>';
+    html += '<div class="workbench-section"><div class="wb-list">';
+    dueSoon.forEach(function(c) {
+      var d = daysBetween(c.followUpDate, todayStr);
+      var label = d === 0 ? '今天' : Math.abs(d) + '天后';
+      html += '<div class="wb-item" data-id="' + c.id + '">' +
+        '<span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escRaw(c.name) + '</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '') + '</div>' +
+        '</div>' +
+        '<span class="tag tag-due">🔔 ' + label + '</span>' +
+      '</div>';
+    });
+    html += '</div></div>';
+  }
+  document.getElementById('wb-scroll').innerHTML = html;
+  document.querySelectorAll('.wb-item').forEach(function(item) {
+    item.addEventListener('click', function() { openDetail(item.dataset.id); });
+  });
+}
+
+
+function renderStats() {
+  var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
+  if (isManager) {
+    renderTeamStats();
+  } else {
+    renderSelfStats();
+  }
+}
+
+// 顾问自己的统计：含成交率、来访组数
+function renderSelfStats() {
+  var customers = getMyCustomers();
+  var dealCount = customers.filter(function(c){ return c.dealStatus === '签约' || c.dealStatus === '认购'; }).length;
+  var signedCount = customers.filter(function(c){ return c.dealStatus === '签约'; }).length;
+  var total = customers.length || 1;
+  var dealRate = Math.round(dealCount / total * 100);
+  var levelCounts = {A:0,B:0,C:0,D:0};
+  var channelCounts = {};
+  customers.forEach(function(c) {
+    if (levelCounts[c.level] !== undefined) levelCounts[c.level]++;
+    if (c.channel) channelCounts[c.channel] = (channelCounts[c.channel]||0) + 1;
+  });
+  var levelColors = {A:'#2ecc71',B:'#3498db',C:'#888',D:'#e67e22'};
+  var levelHtml = Object.keys(levelCounts).map(function(lv) {
+    var cnt = levelCounts[lv];
+    var pct = Math.round(cnt/total*100);
+    return '<div class="bar-row"><span class="bar-label" style="color:' + levelColors[lv] + '">' + lv + '级</span><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + levelColors[lv] + '"></div></div><span class="bar-val">' + cnt + '人</span></div>';
+  }).join('');
+  var sortedCh = Object.entries(channelCounts).sort(function(a,b){return b[1]-a[1];});
+  var channelHtml = sortedCh.map(function(e) {
+    var ch = e[0], cnt = e[1];
+    var pct = Math.round(cnt/total*100);
+    return '<div class="bar-row"><span class="bar-label">' + escRaw(ch) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:var(--gold)"></div></div><span class="bar-val">' + cnt + '人</span></div>';
+  }).join('');
+  var todayStr = today();
+  var overdue = customers.filter(function(c){return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0;}).length;
+  var following = customers.length - overdue;
+  var html = '' +
+    '<div class="chart-title" style="padding:14px 16px 4px;">📊 我的业绩</div>' +
+    '<div class="perf-grid">' +
+      '<div class="perf-card"><div class="n">' + customers.length + '</div><div class="l">来访组数</div></div>' +
+      '<div class="perf-card"><div class="n">' + dealCount + '</div><div class="l">成交(认购+签约)</div></div>' +
+      '<div class="perf-card"><div class="n">' + dealRate + '%</div><div class="l">成交率</div></div>' +
+    '</div>' +
+    '<div class="perf-grid">' +
+      '<div class="perf-card"><div class="n" style="color:var(--green)">' + signedCount + '</div><div class="l">签约</div></div>' +
+      '<div class="perf-card"><div class="n" style="color:var(--orange)">' + (dealCount - signedCount) + '</div><div class="l">认购</div></div>' +
+      '<div class="perf-card"><div class="n" style="color:var(--text)">' + (customers.length - dealCount) + '</div><div class="l">未成交</div></div>' +
+    '</div>' +
+    '<div class="chart-box"><div class="chart-title">📊 客户等级分布（共' + total + '人）</div><div class="bar-chart">' + levelHtml + '</div></div>' +
+    '<div class="chart-box"><div class="chart-title">📈 来访渠道分布</div>' + (channelHtml || '<div style="color:var(--text-dim);font-size:13px;">暂无数据</div>') + '</div>' +
+    '<div class="chart-box"><div class="chart-title">📋 跟进状态概览</div><div class="bar-chart">' +
+      '<div class="bar-row"><span class="bar-label" style="color:var(--red)">逾期</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(overdue/total*100) + '%;background:var(--red)"></div></div><span class="bar-val">' + overdue + '人</span></div>' +
+      '<div class="bar-row"><span class="bar-label" style="color:var(--green)">正常</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(following/total*100) + '%;background:var(--green)"></div></div><span class="bar-val">' + following + '人</span></div>' +
+    '</div></div>';
+  document.getElementById('stats-scroll').innerHTML = html;
+}
+
+// 经理统计：看每个人的情况
+function renderTeamStats() {
+  var all = getAllAssignedCustomers();
+  var pool = getPoolCustomers();
+  var todayStr = today();
+  var totalDeal = all.filter(function(c){ return c.dealStatus === '签约' || c.dealStatus === '认购'; }).length;
+  var totalRate = all.length ? Math.round(totalDeal / all.length * 100) : 0;
+
+  // 按顾问分组
+  var groups = {};
+  all.forEach(function(c) {
+    var name = c.consultant || '未分配';
+    if (!groups[name]) groups[name] = [];
+    groups[name].push(c);
+  });
+
+  var teamHtml = Object.keys(groups).map(function(name) {
+    var list = groups[name];
+    var deal = list.filter(function(c){ return c.dealStatus === '签约' || c.dealStatus === '认购'; }).length;
+    var signed = list.filter(function(c){ return c.dealStatus === '签约'; }).length;
+    var rate = Math.round(deal / list.length * 100);
+    var counts = {A:0,B:0,C:0,D:0};
+    list.forEach(function(c){ if (counts[c.level] !== undefined) counts[c.level]++; });
+    var overdueN = list.filter(function(c){ return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; }).length;
+    var rateColor = rate >= 30 ? 'var(--green)' : (rate >= 15 ? 'var(--gold)' : 'var(--text-dim)');
+    return '<div class="team-card">' +
+      '<div class="team-card-head">' +
+        '<span class="team-name">👤 ' + escRaw(name) + '</span>' +
+        '<span class="team-rate" style="color:' + rateColor + '">成交率 ' + rate + '%</span>' +
+      '</div>' +
+      '<div class="team-grid">' +
+        '<div class="team-cell"><div class="n">' + list.length + '</div><div class="l">来访组数</div></div>' +
+        '<div class="team-cell"><div class="n" style="color:var(--gold)">' + deal + '</div><div class="l">成交数</div></div>' +
+        '<div class="team-cell"><div class="n" style="color:var(--red)">' + overdueN + '</div><div class="l">逾期跟进</div></div>' +
+        '<div class="team-cell"><div class="n" style="color:#2ecc71">' + counts.A + '</div><div class="l">A级</div></div>' +
+        '<div class="team-cell"><div class="n" style="color:#3498db">' + counts.B + '</div><div class="l">B级</div></div>' +
+        '<div class="team-cell"><div class="n" style="color:#e67e22">' + (counts.C + counts.D) + '</div><div class="l">C+D级</div></div>' +
+      '</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">签约 ' + signed + ' · 认购 ' + (deal - signed) + ' · 未成交 ' + (list.length - deal) + '</div>' +
+    '</div>';
+  }).join('');
+
+  var poolHtml = pool.length > 0
+    ? '<div class="chart-box"><div class="chart-title">🏊 公共池（' + pool.length + '）</div><div style="font-size:12px;color:var(--text-dim);line-height:1.8;">' +
+      pool.map(function(c){ return '· ' + escRaw(c.name) + '（' + escRaw(c.consultant || '未知来源') + '）'; }).join('<br>') + '</div></div>'
+    : '';
+
+  var html = '' +
+    '<div class="chart-title" style="padding:14px 16px 4px;">📊 团队总览</div>' +
+    '<div class="perf-grid">' +
+      '<div class="perf-card"><div class="n">' + all.length + '</div><div class="l">总来访组数</div></div>' +
+      '<div class="perf-card"><div class="n">' + totalDeal + '</div><div class="l">总成交</div></div>' +
+      '<div class="perf-card"><div class="n">' + totalRate + '%</div><div class="l">整体成交率</div></div>' +
+    '</div>' +
+    '<div class="section-title">👥 每位顾问情况</div>' +
+    (teamHtml || '<div class="pool-empty">暂无客户数据</div>') +
+    poolHtml;
+  document.getElementById('stats-scroll').innerHTML = html;
+}
+
+var analysisFilter = { level:'ALL', consultant:'ALL', deal:'ALL', stage:'ALL', revisit:'ALL' };
+function setAnalysisFilter(type, val) {
+  if (type==='level') analysisFilter.level = val;
+  else if (type==='consultant') analysisFilter.consultant = val;
+  else if (type==='deal') analysisFilter.deal = val;
+  else if (type==='stage') analysisFilter.stage = val;
+  else if (type==='revisit') analysisFilter.revisit = val;
+  renderAnalysis();
+}
+
+function filterChip(type, val, label, active, color) {
+  var c = active ? (color || '#C9A962') : '#e5e5e5';
+  var bg = active ? (color || '#C9A962') : '#fff';
+  var fg = active ? '#fff' : '#666';
+  return '<button onclick="setAnalysisFilter(\'' + type + '\',\'' + val + '\')" style="border:1.5px solid ' + c + ';background:' + bg + ';color:' + fg + ';border-radius:18px;padding:7px 14px;font-size:12px;cursor:pointer;white-space:nowrap;">' + label + '</button>';
+}
+
+function renderRevisitBlock(c) {
+  var rc = c.revisitCount || 0;
+  var fus = (c.followUps || []).slice().reverse().slice(0, 5);
+  var items = fus.length > 0
+    ? fus.map(function(f){ return '· ' + (f.date||'') + ' ' + (f.method||'') + '：' + (f.note || '（无备注）'); }).join('<br>')
+    : '暂无跟进记录';
+  return '<div style="margin:-4px 12px 10px;padding:8px 10px;background:#fff8ec;border-left:3px solid #C9A962;border-radius:0 0 6px 6px;font-size:12px;color:#7a5c10;line-height:1.6;">' +
+    '🔁 复访 <strong>' + rc + '</strong> 次　跟进记录：<br>' + items + '</div>';
+}
+
+function renderAnalysis() {
+  var allCustomers = (getAllAssignedCustomers || function(){ return DB.customers; })();
+
+  // 顾问列表（去重）
+  var consultantSet = {};
+  allCustomers.forEach(function(c){ if (c.consultant) consultantSet[c.consultant] = true; });
+  var consultantNames = Object.keys(consultantSet).sort();
+
+  // 总览（不受筛选影响）
+  var total = allCustomers.length;
+  var signedCount = allCustomers.filter(function(c){ return c.dealStatus==='签约'; }).length;
+  var subsCount = allCustomers.filter(function(c){ return c.dealStatus==='认购'; }).length;
+  var poolCount = allCustomers.filter(function(c){ return c.inPool; }).length;
+  var aCount = allCustomers.filter(function(c){ return c.level==='A'; }).length;
+  var bCount = allCustomers.filter(function(c){ return c.level==='B'; }).length;
+  var cCount = allCustomers.filter(function(c){ return c.level==='C'; }).length;
+  var dCount = allCustomers.filter(function(c){ return c.level==='D'; }).length;
+  var revisitCount = allCustomers.filter(function(c){ return (c.revisitCount||0) >= 2; }).length;
+
+  // 筛选栏
+  var levelChips = ['ALL','A','B','C','D'].map(function(lv){
+    var col = lv === 'ALL' ? '#C9A962' : {A:'#2ecc71',B:'#3498db',C:'#888',D:'#e67e22'}[lv];
+    return filterChip('level', lv, lv==='ALL'?'全部':lv+'级', analysisFilter.level===lv, col);
+  }).join('');
+
+  var consultantChips = ['ALL'].concat(consultantNames).map(function(cn){
+    return filterChip('consultant', cn, cn==='ALL'?'全部顾问':cn, analysisFilter.consultant===cn);
+  }).join('');
+
+  var dealChips = ['ALL','认购','签约','未成交'].map(function(d){
+    var col = d==='认购' ? '#e67e22' : d==='签约' ? '#2ecc71' : d==='未成交' ? '#888' : '#C9A962';
+    return filterChip('deal', d, d==='ALL'?'全部成交':d, analysisFilter.deal===d, col);
+  }).join('');
+
+  var stageChips = ['ALL'].concat(SALES_STAGES.map(function(s){return s.key;})).map(function(k){
+    var st = SALES_STAGES.find(function(s){return s.key===k;});
+    var col = k==='ALL' ? '#C9A962' : st.color;
+    var label = k==='ALL' ? '全部阶段' : (st ? st.icon+' '+st.label : k);
+    return filterChip('stage', k, label, analysisFilter.stage===k, col);
+  }).join('');
+
+  var revisitChips = filterChip('revisit','ALL','全部',analysisFilter.revisit==='ALL') +
+    filterChip('revisit','ONLY','🔁 仅复访 (' + revisitCount + ')',analysisFilter.revisit==='ONLY','#C9A962');
+
+  // 应用筛选
+  var customers = allCustomers.filter(function(c){
+    if (analysisFilter.level !== 'ALL' && c.level !== analysisFilter.level) return false;
+    if (analysisFilter.consultant !== 'ALL' && c.consultant !== analysisFilter.consultant) return false;
+    if (analysisFilter.deal !== 'ALL' && (c.dealStatus||'未成交') !== analysisFilter.deal) return false;
+    if (analysisFilter.stage !== 'ALL' && (c.salesStage||'问询') !== analysisFilter.stage) return false;
+    if (analysisFilter.revisit === 'ONLY' && (c.revisitCount||0) < 2) return false;
+    return true;
+  });
+  customers.sort(function(a,b){
+    var order = {A:0,B:1,C:2,D:3};
+    var la = order[a.level]||4, lb = order[b.level]||4;
+    if (la!==lb) return la-lb;
+    if ((a.dealStatus==='签约')&&(b.dealStatus!=='签约')) return -1;
+    if ((b.dealStatus==='签约')&&(a.dealStatus!=='签约')) return 1;
+    if ((a.dealStatus==='认购')&&(b.dealStatus!=='认购')) return -1;
+    if ((b.dealStatus==='认购')&&(a.dealStatus!=='认购')) return 1;
+    return 0;
+  });
+
+  var filterDesc = [];
+  if (analysisFilter.level !== 'ALL') filterDesc.push(analysisFilter.level + '级');
+  if (analysisFilter.consultant !== 'ALL') filterDesc.push(analysisFilter.consultant);
+  if (analysisFilter.deal !== 'ALL') filterDesc.push(analysisFilter.deal);
+  if (analysisFilter.stage !== 'ALL') filterDesc.push(analysisFilter.stage + '阶段');
+  if (analysisFilter.revisit === 'ONLY') filterDesc.push('仅复访');
+  var filterText = filterDesc.length ? '（' + filterDesc.join(' · ') + '）' : '';
+
+  var showRevisit = analysisFilter.revisit === 'ONLY';
+  var listHtml = customers.length > 0
+    ? customers.map(function(c){ return renderCustomerCard(c) + (showRevisit ? renderRevisitBlock(c) : ''); }).join('')
+    : '<div class="empty-state"><div class="es-icon">🔍</div><p>无符合条件的客户</p></div>';
+
+  var html =
+    '<div class="page-header">' +
+      '<div class="page-title">📋 客户梳理表</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);">点击筛选归类 · 经理专用</div>' +
+    '</div>' +
+
+    '<div class="stats-summary-row">' +
+      '<div class="stat-mini-card"><div class="stat-num" style="color:var(--gold)">' + total + '</div><div class="stat-label">全部客户</div></div>' +
+      '<div class="stat-mini-card"><div class="stat-num" style="color:var(--success)">' + signedCount + '</div><div class="stat-label">已签约</div></div>' +
+      '<div class="stat-mini-card"><div class="stat-num" style="color:#f39c12">' + subsCount + '</div><div class="stat-label">已认购</div></div>' +
+      '<div class="stat-mini-card"><div class="stat-num" style="color:#C9A962">' + revisitCount + '</div><div class="stat-label">复访</div></div>' +
+    '</div>' +
+
+    '<div style="padding:4px 16px 0;">' +
+      '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;font-weight:600;">按等级筛选</div>' +
+      '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + levelChips + '</div>' +
+    '</div>' +
+
+    (consultantNames.length > 1 ? '<div style="padding:12px 16px 0;">' +
+      '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;font-weight:600;">按置业顾问筛选</div>' +
+      '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + consultantChips + '</div>' +
+    '</div>' : '') +
+
+    '<div style="padding:12px 16px 0;">' +
+      '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;font-weight:600;">按成交状态筛选</div>' +
+      '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + dealChips + '</div>' +
+    '</div>' +
+
+    '<div style="padding:12px 16px 0;">' +
+      '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;font-weight:600;">按销售阶段筛选</div>' +
+      '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + stageChips + '</div>' +
+    '</div>' +
+
+    '<div style="padding:12px 16px 0;">' +
+      '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;font-weight:600;">按复访筛选</div>' +
+      '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + revisitChips + '</div>' +
+    '</div>' +
+
+    '<div class="section-title" style="margin-top:16px;">📇 客户列表' + filterText + ' · 共 ' + customers.length + ' 位</div>' +
+    listHtml;
+
+  var scroll = document.getElementById('analysis-scroll');
+  scroll.innerHTML = html;
+  scroll.querySelectorAll('.customer-card').forEach(function(card) {
+    card.addEventListener('click', function() { openDetail(card.dataset.id); });
+  });
+}
+function renderMy() {
+  var user = DB.currentUser;
+  var total = getMyCustomers().length;
+  var html = '' +
+    '<div class="profile-card">' +
+      '<div class="profile-avatar">👤</div>' +
+      '<div class="profile-name">' + escRaw(user.name) + '</div>' +
+      '<div class="profile-role">' + escRaw(user.role) + '</div>' +
+      '<div style="font-size:12px;color:var(--text-dim);margin-top:8px;">共 ' + total + ' 位客户' +
+      (function(){ var dc = getMyCustomers().filter(function(x){return x.dealStatus==='签约'||x.dealStatus==='认购';}).length; return ' · 成交 ' + dc + ' 组'; })() + '</div>' +
+    '</div>' +
+    (DB.currentUser && DB.currentUser.role === '销售经理' ? '<div class="profile-card" style="margin-top:12px;">' +
+      '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:8px;">⚙️ 系统设置（仅经理可见）</div>' +
+      '<div class="setting-row">' +
+        '<span>🏊 自动公海池阈值（天）</span>' +
+        '<span style="display:flex;align-items:center;gap:6px;"><input type="number" id="set-pool-days" class="setting-input" min="0" value="' + (DB.settings ? DB.settings.autoPoolDays : 30) + '"><button class="qf-btn" id="save-settings">保存</button></span>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">超过阈值天未跟进的客户将自动移入公共池。<br>设为 0 关闭自动回收。</div>' +
+    '</div>' : '') +
+    '<div class="qr-box">' +
+      '<div id="qr-self-box"></div>' +
+      '<div id="qr-all-box"></div>' +
+    '</div>' +
+    '<div class="action-list">' +
+      '<div class="action-item" id="act-export"><span class="action-icon">📤</span><span class="action-text">导出客户数据</span><span class="action-arrow">›</span></div>' +
+      '<div class="action-item" id="act-import"><span class="action-icon">📥</span><span class="action-text">导入客户数据</span><span class="action-arrow">›</span></div>' +
+    '</div>' +
+    '<input type="file" id="import-file" accept=".json" style="display:none">' +
+    '<div style="text-align:center;padding:20px 0;color:var(--text-dim);font-size:11px;">' +
+      '中山御宸 · 案场管理系统 v2.0<br>© ' + new Date().getFullYear() +
+    '</div>';
+  document.getElementById('my-scroll').innerHTML = html;
+  document.getElementById('act-export').onclick = exportData;
+  document.getElementById('act-import').onclick = function() { document.getElementById('import-file').click(); };
+  document.getElementById('import-file').onchange = importData;
+  var canvas = document.getElementById('qr-canvas');
+  if (canvas) generateQRCode(canvas, window.location.href);
+
+  // 个人专属二维码 + 文本链接（一键复制）
+  var baseUrl = location.origin + location.pathname;
+  var selfUrl = baseUrl + '?u=' + encodeURIComponent(user.name);
+  var selfBox = document.getElementById('qr-self-box');
+  if (selfBox) {
+    selfBox.innerHTML =
+      '<div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:8px;">🌟 我的专属二维码</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">扫码直接进入「' + escRaw(user.name) + '」工作台，免输密码。</div>' +
+      '<canvas id="qr-my" width="180" height="180" style="border-radius:8px;background:#fff;padding:8px;display:block;margin:0 auto;"></canvas>' +
+      '<div style="margin-top:10px;font-size:10px;color:var(--text-dim);word-break:break-all;line-height:1.4;text-align:center;">' + escHtml(selfUrl) + '</div>' +
+      '<button class="qf-btn" id="copy-my-url" style="margin-top:8px;width:100%;">📋 复制专属链接</button>';
+    var c1 = document.getElementById('qr-my');
+    if (c1) generateQRCode(c1, selfUrl);
+    var copyBtn = document.getElementById('copy-my-url');
+    if (copyBtn) copyBtn.onclick = function() {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(selfUrl).then(function(){ toast('✅ 已复制专属链接，可发给同事或保存', 'success'); }, function(){ fallbackCopy(selfUrl); });
+      } else { fallbackCopy(selfUrl); }
+    };
+  }
+
+  // 经理可见：全员 + 管理员二维码清单
+  if (user.role === '销售经理') {
+    var allBox = document.getElementById('qr-all-box');
+    if (allBox) {
+      var list = Object.keys(DEMO_ACCOUNTS);
+      var adminUrl = baseUrl + '?u=' + encodeURIComponent('程华军');
+      var sections = '';
+      sections +=
+        '<div class="profile-card" style="margin-top:12px;">' +
+          '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:8px;">👑 管理员专属（您）</div>' +
+          '<canvas id="qr-admin" width="140" height="140" style="border-radius:8px;background:#fff;padding:6px;display:block;margin:0 auto;"></canvas>' +
+          '<div style="font-size:10px;color:var(--text-dim);word-break:break-all;text-align:center;margin-top:6px;line-height:1.3;">' + escHtml(adminUrl) + '</div>' +
+          '<button class="qf-btn" data-copy="' + escHtml(adminUrl) + '" style="margin-top:6px;width:100%;">📋 复制管理员链接</button>' +
+        '</div>';
+      sections += '<div class="profile-card" style="margin-top:12px;">' +
+        '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:8px;">📲 生成顾问二维码</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">输入置业顾问姓名，生成专属二维码和链接。姓名须与系统账号一致。</div>' +
+        '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+          '<input type="text" id="qr-gen-name" placeholder="输入姓名，如：黄志聪" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:#1a1a1a;">' +
+          '<button class="qf-btn" id="qr-gen-btn" style="padding:8px 14px;white-space:nowrap;">生成</button>' +
+        '</div>' +
+        '<div id="qr-gen-result" style="display:none;"></div>' +
+      '</div>';
+      allBox.innerHTML = sections;
+      // 异步渲染所有 canvas（等待 qrcode 库加载）
+      setTimeout(function() {
+        var adminCanvas = document.getElementById('qr-admin');
+        if (adminCanvas) generateQRCode(adminCanvas, adminUrl);
+        // 顾问二维码自定义生成
+        var genBtn = document.getElementById('qr-gen-btn');
+        if (genBtn) genBtn.onclick = function() {
+          var nameInput = document.getElementById('qr-gen-name');
+          var name = (nameInput ? nameInput.value.trim() : '').replace(/[<>"'&]/g, '');
+          var resultDiv = document.getElementById('qr-gen-result');
+          if (!resultDiv) return;
+          if (!name) { resultDiv.innerHTML = '<div style="color:var(--red);font-size:12px;">⚠️ 请输入姓名</div>'; resultDiv.style.display = 'block'; return; }
+          var accNames = Object.keys(DEMO_ACCOUNTS).filter(function(n){ return n !== '程华军'; });
+          var found = accNames.indexOf(name) >= 0;
+          if (!found) { resultDiv.innerHTML = '<div style="color:var(--red);font-size:12px;">⚠️ 找不到「' + escHtml(name) + '」账号，请确认姓名完全匹配系统账号。</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">可用账号：' + escHtml(accNames.join('、')) + '</div>'; resultDiv.style.display = 'block'; return; }
+          var acc = DEMO_ACCOUNTS[name];
+          if (acc.disabled) { resultDiv.innerHTML = '<div style="color:var(--red);font-size:12px;">⚠️ ' + escHtml(name) + ' 已禁用，无法生成。</div>'; resultDiv.style.display = 'block'; return; }
+          var url = baseUrl + '?u=' + encodeURIComponent(name);
+          resultDiv.innerHTML =
+            '<div style="display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;background:#fff;margin-top:6px;">' +
+              '<canvas id="qr-gen-canvas" width="90" height="90" style="border-radius:4px;background:#fff;padding:4px;flex-shrink:0;"></canvas>' +
+              '<div style="flex:1;min-width:0;">' +
+                '<div style="font-size:13px;font-weight:600;color:#1a1a1a;">' + escRaw(name) + '</div>' +
+                '<div style="font-size:11px;color:var(--text-dim);margin:2px 0;">' + escHtml(acc.role) + '</div>' +
+                '<div style="font-size:10px;color:var(--text-dim);word-break:break-all;line-height:1.3;">' + escHtml(url) + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<button class="qf-btn" id="qr-gen-copy" data-copy="' + escHtml(url) + '" style="margin-top:8px;width:100%;">📋 复制 ' + escHtml(name) + ' 专属链接</button>';
+          resultDiv.style.display = 'block';
+          setTimeout(function() {
+            var c = document.getElementById('qr-gen-canvas');
+            if (c) generateQRCode(c, url);
+            var cpBtn = document.getElementById('qr-gen-copy');
+            if (cpBtn) cpBtn.onclick = function() {
+              var t = cpBtn.getAttribute('data-copy');
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(t).then(function(){ toast('✅ 已复制 ' + name + ' 专属链接', 'success'); });
+              } else { fallbackCopy(t); }
+            };
+          }, 100);
+        };
+      }, 200);
+    }
+  }
+  // 经理设置保存
+  var saveBtn = document.getElementById('save-settings');
+  if (saveBtn) {
+    saveBtn.onclick = function() {
+      var v = parseInt((document.getElementById('set-pool-days').value || '0'));
+      if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
+      DB.settings.autoPoolDays = v;
+      saveDB();
+      toast('✅ 已保存：' + (v > 0 ? v + '天未跟进自动入公海池' : '已关闭自动回收'), 'success');
+    };
+  }
+}
+
+// ================================================================
+// QR CODE (lightweight inline)
+// ================================================================
+function generateQRCode(canvas, text) {
+  try {
+    var size = 200;
+    var ctx = canvas.getContext('2d');
+    canvas.width = size; canvas.height = size;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 14px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('案场销管', size/2, size/2 - 20);
+    ctx.fillStyle = '#C9A962';
+    ctx.font = '12px system-ui';
+    ctx.fillText('扫码访问', size/2, size/2);
+    ctx.fillStyle = '#888';
+    ctx.font = '9px monospace';
+    var urlShort = text.length > 35 ? text.slice(0,32) + '...' : text;
+    ctx.fillText(urlShort, size/2, size/2 + 20);
+    // Try to load QR library
+    var script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
+    script.onload = function() {
+      try {
+        var qr = qrcode(0, 'M');
+        qr.addData(text);
+        qr.make();
+        var modSize = Math.floor(size / qr.getModuleCount());
+        var off = Math.floor((size - modSize * qr.getModuleCount()) / 2);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = '#111';
+        var mc = qr.getModuleCount();
+        for (var r = 0; r < mc; r++) {
+          for (var c = 0; c < mc; c++) {
+            if (qr.isDark(r, c)) {
+              ctx.fillRect(off + c * modSize, off + r * modSize, modSize, modSize);
+            }
+          }
+        }
+      } catch(e2) {}
+    };
+    document.head.appendChild(script);
+  } catch(e) {}
+}
+
+// ================================================================
+// EXPORT / IMPORT
+// ================================================================
+function exportData() {
+  var dataStr = JSON.stringify(DB, null, 2);
+  var blob = new Blob([dataStr], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '中山御宸客户档案_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ 数据已导出', 'success');
+}
+function importData() {
+  var file = document.getElementById('import-file').files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (!data.customers || !Array.isArray(data.customers)) {
+        toast('文件格式不正确', 'error');
+        return;
+      }
+      confirmDlg('导入确认', '将导入 ' + data.customers.length + ' 条客户记录，是否覆盖现有数据？', function() {
+        DB.customers = data.customers;
+        saveDB();
+        toast('✅ 成功导入 ' + data.customers.length + ' 条记录', 'success');
+        navigateTo('workbench');
+      });
+    } catch(err) {
+      toast('文件解析失败', 'error');
+    }
+  };
+  reader.readAsText(file);
+  document.getElementById('import-file').value = '';
+}
+
+// ================================================================
+// DETAIL PAGE
+// ================================================================
+function openDetail(id) {
+  var c = DB.customers.find(function(x){ return x.id === id; });
+  if (!c) { toast('客户不存在', 'error'); return; }
+  window._currentDetailId = id;
+  // Analyze SOACE
+  if (!c.resistanceTags || c.resistanceTags.length === 0) {
+    var analysis = analyzeSOACE(c.soace || '');
+    c.resistanceTags = analysis.tags.map(function(t){return t.name;});
+    c.solutions = analysis.solutions;
+    saveDB();
+  }
+  document.getElementById('detail-name').textContent = c.name;
+  document.getElementById('topbar').classList.add('hidden');
+  document.getElementById('bottom-nav').classList.add('hidden');
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('detail-page').classList.add('active');
+  var analysis2 = analyzeSOACE(c.soace || '');
+  var status = getFollowupStatus(c);
+  var consHtml = (DB.currentUser && DB.currentUser.role === '销售经理')
+    ? '<div class="info-item"><div class="info-label">置业顾问</div><div class="info-value">' + escRaw(c.consultant) + '</div></div>' : '';
+  var followupHtml = c.followUpDate
+    ? '<div class="info-item" style="grid-column:1/-1;"><div class="info-label">跟进状态</div><div class="info-value"><span class="tag ' + status.cls + '">' + status.text + '</span> · ' + escRaw(c.followUpNote || '无跟进说明') + '</div></div>' : '';
+  var resistanceHtml = renderResistanceBox(analysis2.analysis, c.solutions || []);
+  var followupHtml = '<div style="margin-top:12px;">';
+  followupHtml += '<div class="section-title">📋 跟进记录（' + ((c.followUps && c.followUps.length) || 0) + '）</div>';
+  followupHtml += '<div class="soace-block"><div class="followup-timeline">';
+  var fus = c.followUps || [];
+  if (fus.length === 0) {
+    followupHtml += '<div style="color:var(--text-dim);font-size:12px;padding:8px 0;">暂无跟进记录</div>';
+  } else {
+    fus.slice(0, 5).forEach(function(f){
+      var t = f.time ? f.time.slice(0,16).replace('T',' ') : '';
+      followupHtml += '<div class="followup-item">' +
+        '<div class="followup-dot">' + (SALES_STAGES.find(function(s){return s.key===f.method;}) ? '📞' : '📝') + '</div>' +
+        '<div class="followup-body">' +
+          '<div class="followup-meta"><span class="method-tag method-' + escRaw(f.method) + '">' + escRaw(f.method) + '</span>' + escRaw(t) + ' · ' + escRaw(f.operator || '系统') + '</div>' +
+          '<div class="followup-content">' + escRaw(f.content || '') + '</div>' +
+          (f.nextFollowUp ? '<div class="followup-next">⏰ 下次：' + escRaw(f.nextFollowUp) + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    });
+    if (fus.length > 5) followupHtml += '<div style="text-align:center;padding:6px;color:var(--text-dim);font-size:11px;">还有 ' + (fus.length - 5) + ' 条记录...</div>';
+  }
+  followupHtml += '</div>';
+  followupHtml += '</div>';
+  // 快速跟进
+  followupHtml += '<div class="quick-followup">' +
+    '<div style="color:var(--gold);font-weight:600;margin-bottom:8px;font-size:12px;">➕ 快速跟进</div>' +
+    '<div class="qf-row" style="margin-bottom:6px;">' +
+      FOLLOWUP_METHODS.map(function(m){
+        return '<label class="radio-option" style="padding:4px 10px;font-size:11px;"><input type="radio" name="qf-method" value="' + m + '" hidden>' + m + '</label>';
+      }).join('') +
+    '</div>' +
+    '<textarea id="qf-content" placeholder="本次跟进内容..."></textarea>' +
+    '<div class="qf-row">' +
+      '<span style="font-size:11px;color:var(--text-dim);">下次跟进</span>' +
+      '<input type="date" id="qf-next" class="form-input" style="flex:1;" value="' + fDate(new Date(Date.now() + 7*86400000)) + '">' +
+      '<button class="qf-btn" id="qf-submit">✅ 保存跟进</button>' +
+    '</div>' +
+  '</div>';
+  followupHtml += '</div>';
+
+  // 历史记录
+  var historyHtml = '';
+  if (c.history && c.history.length > 0) {
+    historyHtml = '<div style="margin-top:12px;"><div class="section-title">📜 操作历史（' + c.history.length + '）</div><div class="soace-block">';
+    c.history.slice(0, 8).forEach(function(h){
+      var t = h.time ? h.time.slice(0,16).replace('T',' ') : '';
+      historyHtml += '<div class="history-item">' +
+        '<span class="history-time">' + escRaw(t) + '</span>' +
+        '<span style="flex:1;"><b style="color:var(--gold);">' + escRaw(h.action) + '</b> · ' + escRaw(h.operator || '') + (h.detail ? ' · ' + escRaw(h.detail) : '') + '</span>' +
+      '</div>';
+    });
+    if (c.history.length > 8) historyHtml += '<div style="text-align:center;padding:6px;color:var(--text-dim);font-size:11px;">还有 ' + (c.history.length - 8) + ' 条...</div>';
+    historyHtml += '</div></div>';
+  }
+  var soaceHtml = c.soace
+    ? '<div class="soace-block"><div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:8px;">📋 客户情况 / SOACE</div><div class="soace-text">' + esc(c.soace) + '</div></div>' : '';
+  var noteHtml = c.note
+    ? '<div class="soace-block"><div style="font-size:12px;color:var(--text-dim);font-weight:600;margin-bottom:8px;">📝 备注</div><div style="font-size:13px;color:var(--text);white-space:pre-wrap;">' + esc(c.note) + '</div></div>' : '';
+  document.getElementById('detail-content').innerHTML = '' +
+    '<div class="info-grid">' +
+      '<div class="info-item"><div class="info-label">客户等级</div><div class="info-value"><span class="level-badge ' + c.level + '" style="display:inline-flex;width:26px;height:26px;border-radius:7px;align-items:center;justify-content:center;color:#1a1a1a;font-size:14px;">' + c.level + '</span> ' + c.level + '级</div></div>' +
+      '<div class="info-item"><div class="info-label">来访渠道</div><div class="info-value">' + escRaw(c.channel || '—') + '</div></div>' +
+      consHtml +
+      '<div class="info-item"><div class="info-label">电话号码</div><div class="info-value">' + escRaw(c.phone) + '</div></div>' +
+      '<div class="info-item"><div class="info-label">是否算价</div><div class="info-value">' + (c.calculated ? '✅ 是' : '❌ 否') + '</div></div>' +
+      (c.calculatedPrice ? '<div class="info-item" style="background:rgba(201,169,98,0.08);border-radius:8px;padding:10px 12px;margin:4px 0;border-left:3px solid var(--gold);"><div class="info-label" style="color:var(--gold);font-size:11px;">💰 算价结果</div><div class="info-value" style="font-size:14px;"><b>' + escHtml(c.calculatedPrice.building || '') + (c.calculatedPrice.building && c.calculatedPrice.price ? '　' : '') + (c.calculatedPrice.price ? '<span style="font-size:16px;color:var(--gold);font-weight:700;">' + escHtml(c.calculatedPrice.price) + '万</span>' : '') + '</b><div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + (c.calculatedPrice.date ? '算价日期：' + escHtml(c.calculatedPrice.date) : '') + '</div></div></div>' : '') +
+      '<div class="info-item"><div class="info-label">是否全流程</div><div class="info-value">' + (c.fullProcess ? '✅ 是' : '❌ 否') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">职业</div><div class="info-value">' + escRaw(c.job || '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">年龄</div><div class="info-value">' + escRaw(c.age || '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">意向面积</div><div class="info-value">' + (c.area ? escRaw(c.area) + '㎡' : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">意向栋数</div><div class="info-value">' + escRaw(c.buildingIntent || '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">居住小区</div><div class="info-value">' + escRaw(c.residence || '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">对比项目</div><div class="info-value">' + escRaw(c.competitor || '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">接待时长</div><div class="info-value">' + (c.visitDuration ? escRaw(c.visitDuration) + ' 分钟' : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">接待时间</div><div class="info-value">' + (c.visitTime ? fDateTime(c.visitTime) : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">复访次数</div><div class="info-value">' + (c.revisitCount||0) + ' 次</div></div>' +
+      '<div class="info-item"><div class="info-label">成交状态</div><div class="info-value">' + (c.dealStatus ? c.dealStatus : '未成交') + (c.dealDate ? ' · ' + escRaw(c.dealDate) : '') + '</div></div>' +
+      '<div class="info-item" style="grid-column:1/-1;"><div class="info-label">销售阶段</div><div class="info-value">' +
+        SALES_STAGES.map(function(s){
+          var active = c.salesStage === s.key;
+          return '<span class="stage-badge stage-' + s.key + '" style="cursor:pointer;margin-right:6px;' + (active ? 'box-shadow:0 0 0 2px var(--gold);' : 'opacity:0.6;') + '" data-stage="' + s.key + '">' + s.icon + ' ' + s.key + '</span>';
+        }).join('') +
+      '</div></div>' +
+      (c.secondaryPhone ? '<div class="info-item"><div class="info-label">备用电话</div><div class="info-value">' + escRaw(c.secondaryPhone) + '</div></div>' : '') +
+      (c.birthday ? '<div class="info-item"><div class="info-label">生日</div><div class="info-value">' + escRaw(c.birthday) + '</div></div>' : '') +
+      '<div class="info-item"><div class="info-label">录入时间</div><div class="info-value">' + (c.createdAt ? fDateTime(c.createdAt) : '—') + '</div></div>' +
+      followupHtml +
+    '</div>' +
+    soaceHtml +
+    resistanceHtml +
+    noteHtml +
+    followupHtml +
+    historyHtml +
+    '<div style="height:40px;"></div>';
+  document.getElementById('detail-edit').onclick = function() { openForm(null, c); };
+  document.getElementById('detail-price').onclick = function() { openPriceCalc(window._currentDetailId || ''); };
+  var poolBtn = document.getElementById('detail-pool');
+  var claimBtn = document.getElementById('detail-claim');
+  var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
+  var isOwner = c.consultant === (DB.currentUser ? DB.currentUser.name : '');
+  if (poolBtn) {
+    if (c.inPool) {
+      poolBtn.style.display = 'none';
+    } else if (isManager || isOwner) {
+      poolBtn.style.display = '';
+      poolBtn.onclick = function() {
+        confirmDlg('移入公共池', '确定将 "' + c.name + '" 移入公共池吗？\n其他顾问将可以看到并领取此客户。', function() {
+          c.inPool = true;
+          c.poolTime = new Date().toISOString();
+          saveDB();
+          toast('已移入公共池', 'success');
+          closeDetail();
+          renderCustomerList();
+          renderWorkbench();
+        });
+      };
+    } else {
+      poolBtn.style.display = 'none';
+    }
+  }
+  if (claimBtn) {
+    if (c.inPool && !isManager) {
+      claimBtn.style.display = '';
+      claimBtn.onclick = function() {
+        confirmDlg('领取客户', '确定将此客户领取到你的名下吗？', function() {
+          c.inPool = false;
+          c.consultant = DB.currentUser.name;
+          c.claimedAt = new Date().toISOString();
+          saveDB();
+          toast('✅ 已领取到你的名下', 'success');
+          closeDetail();
+          renderCustomerList();
+          renderWorkbench();
+        });
+      };
+    } else if (c.inPool && isManager) {
+      claimBtn.style.display = '';
+      claimBtn.textContent = '👤 指派';
+      claimBtn.onclick = function() {
+        var name = prompt('指派给哪位顾问？', '');
+        if (!name) return;
+        c.inPool = false;
+        c.consultant = name.trim();
+        c.claimedAt = new Date().toISOString();
+        saveDB();
+        toast('已指派给 ' + name.trim(), 'success');
+        closeDetail();
+        renderCustomerList();
+        renderWorkbench();
+      };
+    } else {
+      claimBtn.style.display = 'none';
+    }
+  }
+  // 销售阶段点击切换
+  document.querySelectorAll('[data-stage]').forEach(function(el){
+    el.onclick = function(){
+      var newStage = el.dataset.stage;
+      if (newStage === c.salesStage) return;
+      var old = c.salesStage;
+      c.salesStage = newStage;
+      // 联动 dealStatus
+      if (newStage === '签约') { c.dealStatus = '签约'; if (!c.dealDate) c.dealDate = today(); }
+      else if (newStage === '认购') { c.dealStatus = '认购'; }
+      else if (newStage === '问询' || newStage === '来访' || newStage === '认筹') { c.dealStatus = '未成交'; c.dealDate = ''; }
+      addHistory(c, '阶段变更', old + ' → ' + newStage);
+      saveDB();
+      toast('✅ 阶段：' + newStage, 'success');
+      openDetail(c.id);
+    };
+  });
+  // 快速跟进
+  var qfSubmit = document.getElementById('qf-submit');
+  if (qfSubmit) {
+    // 默认选中"来访"
+    var defMethod = document.querySelector('input[name="qf-method"][value="来访"]');
+    if (defMethod) { defMethod.checked = true; defMethod.parentElement.classList.add('active'); }
+    document.querySelectorAll('input[name="qf-method"]').forEach(function(r){
+      r.parentElement.onclick = function(){
+        document.querySelectorAll('input[name="qf-method"]').forEach(function(x){ x.checked = false; x.parentElement.classList.remove('active'); });
+        r.checked = true; r.parentElement.classList.add('active');
+      };
+    });
+    qfSubmit.onclick = function(){
+      var method = (document.querySelector('input[name="qf-method"]:checked') || {}).value || '来访';
+      var content = (document.getElementById('qf-content').value || '').trim();
+      var nextDate = (document.getElementById('qf-next').value || '').trim();
+      if (!content) { toast('请填写跟进内容', 'error'); return; }
+      addFollowUp(c, method, content, nextDate);
+      saveDB();
+      toast('✅ 跟进已记录', 'success');
+      openDetail(c.id);
+    };
+  }
+  document.getElementById('detail-del').onclick = function() {
+    deleteCustomer(c.id);
+  };
+  // 动态更新算价格按钮文字
+  var priceBtn = document.getElementById('detail-price');
+  if (priceBtn) priceBtn.textContent = c.calculatedPrice ? '💰 查看算价' : '💰 算价格';
+}
+
+function closeDetail() {
+  document.getElementById('detail-page').classList.remove('active');
+  document.getElementById('topbar').classList.remove('hidden');
+  document.getElementById('bottom-nav').classList.remove('hidden');
+  document.getElementById('topbar-title').textContent = getTabTitle(currentTab);
+  showTab(currentTab);
+}
+
+// ================================================================
+// FORM PAGE
+// ================================================================
+var editingCustomer = null;
+
+function openForm(prefill, customer) {
+  editingCustomer = customer || null;
+  document.getElementById('form-title').textContent = customer ? '编辑客户' : '新增客户';
+  document.getElementById('topbar').classList.add('hidden');
+  document.getElementById('bottom-nav').classList.add('hidden');
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('form-page').classList.add('active');
+  var now = new Date();
+  var defFollowUp = new Date(now.getTime() + 7*86400000);
+  var defVisit = now.toISOString().slice(0,16);
+  var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
+  var consVal = customer ? customer.consultant : (DB.currentUser ? DB.currentUser.name : '');
+  var formHtml = '' +
+    '<div class="form-inner">' +
+      '<button class="smart-paste-btn" id="sp-btn">' +
+        '<span style="font-size:20px;">📋</span>' +
+        '<span>智能粘贴 — 从剪贴板自动识别客户信息</span>' +
+      '</button>' +
+      '<div id="parse-preview"></div>' +
+
+      '<div class="form-group"><label class="form-label">客户姓名 <span class="required">*</span></label>' +
+        '<input type="text" id="f-name" class="form-input" placeholder="请输入客户姓名" value="' + escRaw(customer ? customer.name : (prefill ? prefill.name : '')) + '"></div>' +
+
+      '<div class="form-row">' +
+        '<div class="form-group"><label class="form-label">电话号码 <span class="required">*</span></label>' +
+          '<input type="tel" id="f-phone" class="form-input" placeholder="主号码" value="' + escRaw(customer ? customer.phone : '') + '"></div>' +
+        '<div class="form-group"><label class="form-label">备用电话</label>' +
+          '<input type="tel" id="f-phone2" class="form-input" placeholder="选填" value="' + escRaw(customer ? customer.secondaryPhone : '') + '"></div>' +
+      '</div>' +
+
+      '<div class="form-group"><label class="form-label">置业顾问</label>' +
+        '<input type="text" id="f-consultant" class="form-input" value="' + escRaw(consVal) + '" ' + (!isManager ? 'disabled' : '') + ' list="cn-list-form">' +
+        '<datalist id="cn-list-form"><option value="崔妮"><option value="黄志聪"><option value="赵明"><option value="毛雨文江华"><option value="蒋英"></datalist></div>' +
+
+      '<div class="form-group"><label class="form-label">来访渠道</label>' +
+        '<select id="f-channel" class="form-select"><option value="">请选择</option>' +
+          CHANNELS.map(function(ch){return '<option value="' + escRaw(ch) + '" ' + (customer && customer.channel === ch ? 'selected' : '') + '>' + escRaw(ch) + '</option>';}).join('') +
+        '</select></div>' +
+
+      '<div class="form-group"><label class="form-label">销售阶段</label>' +
+        '<div class="radio-group" id="f-stage-group">' +
+          SALES_STAGES.map(function(s){
+            var cur = customer ? customer.salesStage : '问询';
+            var checked = cur === s.key ? 'checked' : '';
+            var active = cur === s.key ? 'active' : '';
+            return '<label class="radio-option ' + active + '" style="font-size:11px;"><input type="radio" name="f-stage" value="' + s.key + '" ' + checked + ' hidden>' + s.icon + ' ' + s.key + '</label>';
+          }).join('') +
+        '</div></div>' +
+      '<div class="form-group"><label class="form-label">客户等级</label>' +
+        '<div class="radio-group" id="f-level-group">' +
+          ['A','B','C','D'].map(function(lv){
+            var checked = (customer && customer.level === lv) ? 'checked' : (!customer && lv === 'C' ? 'checked' : '');
+            return '<label class="radio-option ' + ((customer && customer.level === lv) || (!customer && lv === 'C') ? 'active' : '') + '">' +
+              '<input type="radio" name="f-level" value="' + lv + '" ' + checked + ' hidden>' + lv + '级</label>';
+          }).join('') +
+        '</div></div>' +
+
+      '<div class="form-group"><label class="form-label">是否算价</label>' +
+        '<div class="radio-group">' +
+          [{v:'true',l:'是'},{v:'false',l:'否'}].map(function(o){
+            var checked = (customer && String(customer.calculated) === o.v) || (!customer && o.v === 'false') ? 'checked' : '';
+            var active = (customer && String(customer.calculated) === o.v) || (!customer && o.v === 'false') ? 'active' : '';
+            return '<label class="radio-option ' + active + '"><input type="radio" name="f-calc" value="' + o.v + '" ' + checked + ' hidden>' + o.l + '</label>';
+          }).join('') +
+        '</div></div>' +
+
+      '<div class="form-group"><label class="form-label">是否全流程</label>' +
+        '<div class="radio-group">' +
+          [{v:'true',l:'是'},{v:'false',l:'否'}].map(function(o){
+            var checked = (customer && String(customer.fullProcess) === o.v) || (!customer && o.v === 'false') ? 'checked' : '';
+            var active = (customer && String(customer.fullProcess) === o.v) || (!customer && o.v === 'false') ? 'active' : '';
+            return '<label class="radio-option ' + active + '"><input type="radio" name="f-fp" value="' + o.v + '" ' + checked + ' hidden>' + o.l + '</label>';
+          }).join('') +
+        '</div></div>' +
+
+      '<div class="form-row">' +
+        '<div class="form-group"><label class="form-label">职业</label><input type="text" id="f-job" class="form-input" placeholder="如：私企业主" value="' + escRaw(customer ? customer.job : '') + '"></div>' +
+        '<div class="form-group"><label class="form-label">年龄</label><input type="text" id="f-age" class="form-input" placeholder="如：35左右" value="' + escRaw(customer ? customer.age : '') + '"></div>' +
+      '</div>' +
+
+      '<div class="form-row">' +
+        '<div class="form-group"><label class="form-label">意向面积</label><div class="input-sfx" data-s="㎡"><input type="number" id="f-area" class="form-input" placeholder="如：143" value="' + escRaw(customer ? customer.area : '') + '"></div></div>' +
+        '<div class="form-group"><label class="form-label">意向栋数</label><input type="text" id="f-building" class="form-input" placeholder="如：1栋" value="' + escRaw(customer ? customer.buildingIntent : '') + '"></div>' +
+      '</div>' +
+
+      '<div class="form-group"><label class="form-label">居住小区</label><input type="text" id="f-residence" class="form-input" placeholder="如：凯茵新城" value="' + escRaw(customer ? customer.residence : '') + '"></div>' +
+      '<div class="form-group"><label class="form-label">对比项目</label><input type="text" id="f-competitor" class="form-input" placeholder="如：看过润珑" value="' + escRaw(customer ? customer.competitor : '') + '"></div>' +
+
+      '<div class="form-row">' +
+        '<div class="form-group"><label class="form-label">接待时长（分钟）</label><input type="number" id="f-duration" class="form-input" placeholder="如：60" value="' + escRaw(customer ? customer.visitDuration : '') + '"></div>' +
+        '<div class="form-group"><label class="form-label">复访次数</label><input type="number" id="f-revisit" class="form-input" placeholder="0" value="' + (customer ? customer.revisitCount : 0) + '"></div>' +
+      '</div>' +
+
+      '<div class="form-group"><label class="form-label">接待日期时间</label><input type="datetime-local" id="f-visittime" class="form-input" value="' + (customer ? customer.visitTime : defVisit) + '"></div>' +
+
+      '<div class="form-group"><label class="form-label">客户情况 / SOACE <span style="font-size:11px;color:var(--text-dim)">（重点字段，请详细填写）</span></label>' +
+        '<textarea id="f-soace" class="form-textarea" style="min-height:160px;" placeholder="请详细描述客户来访情况、经济实力、购房意向、顾虑抗性等...">' + escRaw(customer ? customer.soace : (prefill ? prefill.soace : '')) + '</textarea></div>' +
+
+      '<div class="form-group"><label class="form-label">备注</label>' +
+        '<textarea id="f-note" class="form-textarea" style="min-height:80px;" placeholder="补充说明...">' + escRaw(customer ? customer.note : '') + '</textarea></div>' +
+
+      '<div class="form-group"><label class="form-label">成交状态</label>' +
+        '<div class="radio-group" id="f-deal-group">' +
+          ['未成交','认购','签约'].map(function(st){
+            var checked = (customer && customer.dealStatus === st) || (!customer && st === '未成交') ? 'checked' : '';
+            var active = (customer && customer.dealStatus === st) || (!customer && st === '未成交') ? 'active' : '';
+            return '<label class="radio-option ' + active + '"><input type="radio" name="f-deal" value="' + st + '" ' + checked + ' hidden>' + st + '</label>';
+          }).join('') +
+        '</div></div>' +
+
+      '<div class="form-group"><label class="form-label">成交日期</label><input type="date" id="f-dealdate" class="form-input" value="' + (customer ? (customer.dealDate || '') : '') + '"></div>' +
+
+      '<div class="form-group"><label class="form-label">跟进日期</label><input type="date" id="f-followupdate" class="form-input" value="' + (customer ? customer.followUpDate : fDate(defFollowUp)) + '"></div>' +
+
+      '<div class="form-group"><label class="form-label">跟进说明</label>' +
+        '<textarea id="f-note2" class="form-textarea" style="min-height:80px;" placeholder="本次跟进内容或计划...">' + escRaw(customer ? customer.followUpNote : '') + '</textarea></div>' +
+
+      '<button class="form-submit" id="form-submit">' + (customer ? '💾 保存修改' : '✅ 添加客户') + '</button>' +
+      (customer ? '<button class="form-delete" id="form-delete">🗑️ 删除此客户</button>' : '') +
+      '<div style="height:40px;"></div>' +
+    '</div>';
+  document.getElementById('form-content').innerHTML = formHtml;
+
+  // Radio toggle
+  document.querySelectorAll('.radio-group').forEach(function(grp) {
+    grp.querySelectorAll('.radio-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        grp.querySelectorAll('.radio-option').forEach(function(o){o.classList.remove('active');});
+        grp.querySelectorAll('input[type="radio"]').forEach(function(r){r.checked=false;});
+        opt.classList.add('active');
+        var inp = opt.querySelector('input[type="radio"]');
+        if (inp) inp.checked = true;
+      });
+    });
+  });
+
+  document.getElementById('sp-btn').onclick = smartPaste;
+  document.getElementById('form-submit').onclick = submitForm;
+  var delBtn = document.getElementById('form-delete');
+  if (delBtn) {
+    delBtn.onclick = function() {
+      confirmDlg('删除确认', '确定删除 "' + editingCustomer.name + '" 吗？', function() {
+        DB.customers = DB.customers.filter(function(x){return x.id !== editingCustomer.id;});
+        saveDB();
+        toast('已删除', 'success');
+        closeForm();
+        renderCustomerList();
+        renderWorkbench();
+      });
+    };
+  }
+}
+
+function submitForm() {
+  var name = (document.getElementById('f-name').value || '').trim();
+  var phone = (document.getElementById('f-phone').value || '').trim();
+  if (!name) { toast('请填写客户姓名', 'error'); return; }
+  if (!phone) { toast('请填写电话号码', 'error'); return; }
+  var dup = DB.customers.find(function(c){ return c.phone === phone && c.id !== (editingCustomer ? editingCustomer.id : ''); });
+  if (dup) { toast('该电话已存在客户"' + dup.name + '"', 'error'); return; }
+  var levelEl = document.querySelector('input[name="f-level"]:checked');
+  var calcEl = document.querySelector('input[name="f-calc"]:checked');
+  var fpEl = document.querySelector('input[name="f-fp"]:checked');
+  var soace = (document.getElementById('f-soace').value || '').trim();
+  var analysis = analyzeSOACE(soace);
+  var customerData = {
+    id: editingCustomer ? editingCustomer.id : uuid(),
+    name: name,
+    phone: phone,
+    consultant: (DB.currentUser && DB.currentUser.role === '销售经理')
+      ? (document.getElementById('f-consultant').value || '').trim()
+      : (DB.currentUser ? DB.currentUser.name : ''),
+    channel: (document.getElementById('f-channel').value || '').trim(),
+    level: levelEl ? levelEl.value : 'C',
+    calculated: calcEl ? calcEl.value === 'true' : false,
+    fullProcess: fpEl ? fpEl.value === 'true' : false,
+    job: (document.getElementById('f-job').value || '').trim(),
+    age: (document.getElementById('f-age').value || '').trim(),
+    area: (document.getElementById('f-area').value || '').trim(),
+    buildingIntent: (document.getElementById('f-building').value || '').trim(),
+    residence: (document.getElementById('f-residence').value || '').trim(),
+    competitor: (document.getElementById('f-competitor').value || '').trim(),
+    visitDuration: (document.getElementById('f-duration').value || '').trim(),
+    revisitCount: parseInt(document.getElementById('f-revisit').value) || 0,
+    visitTime: (document.getElementById('f-visittime').value || '').trim(),
+    salesStage: (document.querySelector('input[name="f-stage"]:checked') || {}).value || '问询',
+    secondaryPhone: (document.getElementById('f-phone2').value || '').trim(),
+    birthday: '',
+    soace: soace,
+    note: (document.getElementById('f-note').value || '').trim(),
+    followUpDate: (document.getElementById('f-followupdate').value || '').trim(),
+    followUpNote: (document.getElementById('f-note2').value || '').trim(),
+    dealStatus: (document.querySelector('input[name="f-deal"]:checked') || {}).value || '未成交',
+    dealDate: (document.getElementById('f-dealdate').value || '').trim(),
+    resistanceTags: analysis.tags.map(function(t){return t.name;}),
+    solutions: analysis.solutions,
+    createdAt: editingCustomer ? editingCustomer.createdAt : new Date().toISOString()
+  };
+  // Fix consultant for 置业顾问
+  if (DB.currentUser && DB.currentUser.role === '置业顾问') {
+    customerData.consultant = DB.currentUser.name;
+  }
+  if (editingCustomer) {
+    var idx = DB.customers.findIndex(function(x){return x.id === editingCustomer.id;});
+    if (idx !== -1) DB.customers[idx] = customerData;
+  } else {
+    DB.customers.push(customerData);
+  }
+  saveDB();
+  toast(editingCustomer ? '✅ 修改已保存' : '✅ 客户添加成功', 'success');
+  closeForm();
+  renderCustomerList();
+  renderWorkbench();
+}
+
+function closeForm() {
+  document.getElementById('form-page').classList.remove('active');
+  document.getElementById('topbar').classList.remove('hidden');
+  document.getElementById('bottom-nav').classList.remove('hidden');
+  document.getElementById('topbar-title').textContent = getTabTitle(currentTab);
+  showTab(currentTab);
+  editingCustomer = null;
+}
+
+// ================================================================
+// NAVIGATION
+// ================================================================
+var currentTab = 'workbench';
+function getTabTitle(tab) {
+  return {workbench:'工作台',customers:'客户列表',stats:'数据统计',analysis:'客户梳理表',my:'我的'}[tab] || '案场销管';
+}
+function showTab(tab) {
+  if (tab === 'analysis' && (!DB.currentUser || DB.currentUser.role !== '销售经理')) return;
+  currentTab = tab;
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  var pageEl = document.getElementById('page-' + tab);
+  if (pageEl) pageEl.classList.add('active');
+  document.getElementById('topbar-title').textContent = getTabTitle(tab);
+  if (tab === 'workbench') renderWorkbench();
+  else if (tab === 'customers') renderCustomerList();
+  else if (tab === 'stats') renderStats();
+  else if (tab === 'analysis') renderAnalysis();
+  else if (tab === 'my') renderMy();
+}
+function navigateTo(tab) {
+  if (tab === 'analysis' && (!DB.currentUser || DB.currentUser.role !== '销售经理')) {
+    showToast('⚠️ 仅销售经理可用', 'err');
+    return;
+  }
+  document.querySelectorAll('.nav-item').forEach(function(n){
+    n.classList.toggle('active', n.dataset.page === tab);
+  });
+  showTab(tab);
+}
+
+// ================================================================
+// LOGIN
+// ================================================================
+var ADMIN_CODE = 'yuchen2026';
+var DEMO_ACCOUNTS = {
+  '崔妮':      { role: '置业顾问', pwd: 'cui2026' },
+  '黄志聪':    { role: '置业顾问', pwd: 'hzc2026' },
+  '赵明':      { role: '置业顾问', pwd: 'zm2026' },
+  '毛雨文江华': { role: '置业顾问', pwd: 'mywjh2026' },
+  '蒋英':      { role: '置业顾问', pwd: 'jy2026' },
+  '程华军':    { role: '销售经理', pwd: 'chj2026' },
+};
+
+function doLogin(name, role) {
+  name = (name||'').trim();
+  var pwd = (document.getElementById('login-pwd')||{value:''}).value;
+  var err = document.getElementById('login-error');
+  if (err) err.style.display = 'none';
+  if (!name) { showToast('请输入姓名', 'err'); return; }
+
+  // 管理员快捷入口：选"销售经理"+姓名"程华军" → 弹出验证码
+  if (name === '程华军' && role === '销售经理') {
+    var code = prompt('请输入管理员验证码（默认 yuchen2026）：');
+    if (code !== ADMIN_CODE) {
+      if (code !== null) showToast('❌ 验证码错误', 'err');
+      return;
+    }
+    DB.currentUser = { name: '程华军', role: '销售经理', isAdmin: true };
+    if (!DB.approvedUsers) DB.approvedUsers = [];
+    saveDB();
+    closeLoginScreen();
+    refreshNavForRole();
+    enterApp();
+    showToast('👑 管理员身份已激活');
+    setTimeout(function(){ showAdminPanel(); }, 400);
+    return;
+  }
+
+  // 普通账号白名单验证
+  var account = DEMO_ACCOUNTS[name];
+  if (!account) {
+    var el = document.getElementById('login-error');
+    if (el) { el.textContent = '姓名不在白名单内，请联系管理员'; el.style.display = 'block'; }
+    return;
+  }
+  if (account.role !== role) {
+    var el = document.getElementById('login-error');
+    if (el) { el.textContent = '角色与账号不匹配'; el.style.display = 'block'; }
+    return;
+  }
+  if (account.disabled) {
+    showToast('该账号已被管理员禁用', 'err');
+    return;
+  }
+  if (account.pwd !== pwd) {
+    var el = document.getElementById('login-error');
+    if (el) { el.textContent = '密码错误'; el.style.display = 'block'; }
+    return;
+  }
+  if (err) err.style.display = 'none';
+  DB.currentUser = { name: name, role: role };
+  if (!DB.approvedUsers) DB.approvedUsers = [];
+  saveDB();
+  closeLoginScreen();
+  refreshNavForRole();
+  enterApp();
+  showToast('欢迎回来，' + name);
+}
+
+function showAdminLogin() {
+  var m = document.getElementById('admin-login-modal');
+  if (m) { m.style.display = 'flex'; setTimeout(function(){ var i = document.getElementById('admin-pwd-input'); if(i) i.focus(); }, 80); }
+}
+function closeAdminLogin() {
+  var m = document.getElementById('admin-login-modal');
+  if (m) m.style.display = 'none';
+  var i = document.getElementById('admin-pwd-input');
+  if (i) i.value = '';
+  var e = document.getElementById('admin-login-error');
+  if (e) e.style.display = 'none';
+}
+function doAdminLogin() {
+  var pwd = (document.getElementById('admin-pwd-input')||{value:''}).value;
+  var errEl = document.getElementById('admin-login-error');
+  if (pwd !== ADMIN_CODE) {
+    if (errEl) { errEl.textContent = '密码错误'; errEl.style.display = 'block'; }
+    return;
+  }
+  closeAdminLogin();
+  DB.currentUser = { name: '程华军', role: '销售经理', isAdmin: true };
+  if (!DB.approvedUsers) DB.approvedUsers = [];
+  saveDB();
+  closeLoginScreen();
+  refreshNavForRole();
+  enterApp();
+  showToast('👑 管理员身份已激活');
+  setTimeout(function(){ showAdminPanel(); }, 400);
+}
+
+function closeLoginScreen() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('topbar').classList.remove('hidden');
+  document.getElementById('bottom-nav').classList.remove('hidden');
+}
+
+// 根据当前用户角色刷新导航（经理显示「梳理表」，顾问隐藏）
+function refreshNavForRole() {
+  var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
+  var nav = document.getElementById('nav-analysis');
+  if (nav) nav.style.display = isManager ? '' : 'none';
+}
+
+function enterApp() {
+  showTab('workbench');
+}
+function doLogout() {
+  confirmDlg('退出登录', '确定退出当前账号吗？', function() {
+    DB.currentUser = null;
+    saveDB();
+    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+    document.getElementById('detail-page').classList.remove('active');
+    document.getElementById('form-page').classList.remove('active');
+    document.getElementById('topbar').classList.add('hidden');
+    document.getElementById('bottom-nav').classList.add('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('login-name').value = '';
+    var analysisNav = document.getElementById('nav-analysis');
+    if (analysisNav) analysisNav.style.display = 'none';
+  });
+}
+
+// ================================================================
+// INIT
+// ================================================================
+function init() {
+  loadDB();
+  // 扫码预填姓名（仍需输入密码，不自动登录）
+  var autoName = (function(){
+    var m = location.search.match(/[?&]u=([^&]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  })();
+  if (autoName) {
+    var account = DEMO_ACCOUNTS[autoName];
+    // 预填姓名 + 选中角色
+    var nameEl = document.getElementById('login-name');
+    if (nameEl) nameEl.value = autoName;
+    if (account) {
+      document.querySelectorAll('.role-btn').forEach(function(b){ b.classList.remove('active'); });
+      var targetBtn = document.querySelector('.role-btn[data-role="' + account.role + '"]');
+      if (targetBtn) targetBtn.classList.add('active');
+    }
+    // 聚焦密码框
+    setTimeout(function(){
+      var pwdEl = document.getElementById('login-pwd');
+      if (pwdEl) { pwdEl.focus(); pwdEl.scrollIntoView({behavior:'smooth',block:'center'}); }
+    }, 200);
+    if (!DEMO_ACCOUNTS[autoName]) showToast('未识别账号「' + autoName + '」，请确认后重新扫码', 'err');
+  }
+  if (DB.currentUser) {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('topbar').classList.remove('hidden');
+    document.getElementById('bottom-nav').classList.remove('hidden');
+    refreshNavForRole();
+    showTab('workbench');
+  }
+  document.querySelectorAll('.role-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.role-btn').forEach(function(b){b.classList.remove('active');});
+      btn.classList.add('active');
+    });
+  });
+  document.getElementById('login-btn').onclick = function() {
+    var name = (document.getElementById('login-name').value || '').trim();
+    var role = document.querySelector('.role-btn.active').dataset.role;
+    doLogin(name, role);
+  };
+  document.getElementById('login-name').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doLogin(e.target.value, document.querySelector('.role-btn.active').dataset.role);
+  });
+  document.querySelectorAll('.nav-item').forEach(function(item) {
+    item.addEventListener('click', function() { navigateTo(item.dataset.page); });
+  });
+  document.getElementById('fab-add').onclick = function() { openForm(); };
+  document.getElementById('fab-add2').onclick = function() { openForm(); };
+  document.getElementById('logout-btn').onclick = doLogout;
+  document.getElementById('detail-back').onclick = closeDetail;
+  document.getElementById('form-back').onclick = closeForm;
+  document.getElementById('search-input').addEventListener('input', renderCustomerList);
+  document.getElementById('level-filter').addEventListener('change', renderCustomerList);
+  var tabMine = document.getElementById('tab-mine');
+  var tabPool = document.getElementById('tab-pool');
+  if (tabMine) tabMine.onclick = function() { switchCustTab('mine'); };
+  if (tabPool) tabPool.onclick = function() { switchCustTab('pool'); };
+  // Pull to refresh
+  var custScroll = document.getElementById('cust-scroll');
+  var touchStartY = 0;
+  custScroll.addEventListener('touchstart', function(e){ touchStartY = e.touches[0].clientY; }, {passive:true});
+  custScroll.addEventListener('touchend', function(e) {
+    var delta = e.changedTouches[0].clientY - touchStartY;
+    if (delta > 60 && custScroll.scrollTop < 20) {
+      renderCustomerList();
+      toast('已刷新', 'info');
+    }
+  }, {passive:true});
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+
+// ============================================================
+// 管理员后台
+// ============================================================
+function showAdminPanel() {
+  var pending = DB.pendingUsers || [];
+  var approved = (DB.approvedUsers||[]).filter(function(u){ return !(u.name==='程华军' && u.role==='销售经理'); });
+  var html = '';
+  html += '<div class="admin-panel">';
+  html += '<div class="admin-panel-header">';
+  html += '<span style="color:#C9A962;font-size:16px;font-weight:600">👔 管理员后台</span>';
+  html += '<span onclick="closeAdminPanel()" style="color:#666;font-size:22px;cursor:pointer;line-height:1">✕</span>';
+  html += '</div>';
+  html += '<div class="admin-panel-body">';
+
+  // 账号白名单
+  html += '<div class="admin-section-title">👥 置业顾问管理</div>';
+  html += '<div style="font-size:12px;color:#666;margin-bottom:10px">添加顾问后可生成分专属二维码发给对方</div>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:14px;">';
+  html += '<input type="text" id="new-consultant-name" class="login-input" placeholder="姓名" style="flex:1;padding:9px 12px;font-size:13px">';
+  html += '<input type="text" id="new-consultant-pwd" class="login-input" placeholder="密码（默认6位）" style="width:110px;padding:9px 12px;font-size:13px">';
+  html += '<button onclick="addConsultant()" style="background:#C9A962;border:none;color:#111;padding:9px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">添加</button>';
+  html += '</div>';
+  html += '<div id="consultant-list" style="max-height:300px;overflow-y:auto;"></div>';
+  html += '<div id="qr-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">';
+  html += '<div style="background:#fff;border-radius:16px;padding:24px;text-align:center;max-width:300px;width:90%;">';
+  html += '<div id="qr-modal-name" style="font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:12px;"></div>';
+  html += '<canvas id="qr-modal-canvas" width="200" height="200" style="border-radius:8px;background:#fff;padding:8px;display:block;margin:0 auto;"></canvas>';
+  html += '<div id="qr-modal-url" style="font-size:10px;color:#888;word-break:break-all;margin-top:10px;line-height:1.4;"></div>';
+  html += '<button onclick="downloadQR()" style="margin-top:12px;background:#C9A962;border:none;color:#111;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;width:100%">📥 保存二维码图片</button>';
+  html += '<button onclick="copyConsultantUrl()" style="margin-top:8px;background:#f8f8f8;border:1px solid #e5e5e5;color:#666;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;width:100%">📋 复制专属链接</button>';
+  html += '<button onclick="closeQRModal()" style="margin-top:8px;background:none;border:none;color:#999;font-size:13px;cursor:pointer">关闭</button>';
+  html += '</div></div>';
+
+  // 待审批
+  html += '<div class="admin-section-title">⏳ 待审批申请（' + pending.length + '）</div>';
+  if (pending.length === 0) {
+    html += '<div style="text-align:center;color:#666;padding:20px 0;font-size:13px">暂无待审批申请</div>';
+  } else {
+    pending.forEach(function(p, i){
+      html += '<div class="admin-user-card" style="border-left:3px solid #f39c12">';
+      html += '<div><div style="font-size:14px;color:#1a1a1a;font-weight:600">' + escHtml(p.name) + '</div>';
+      html += '<div style="font-size:11px;color:#666;margin-top:2px">' + escHtml(p.role) + ' · 申请时间：' + escHtml(p.appliedAt||'') + '</div></div>';
+      html += '<div style="display:flex;gap:6px">';
+      html += '<button onclick="approveUser(' + i + ')" style="background:#2ecc71;border:none;color:#1a1a1a;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer">批准</button>';
+      html += '<button onclick="rejectUser(' + i + ')" style="background:#e74c3c;border:none;color:#1a1a1a;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer">拒绝</button>';
+      html += '</div></div>';
+    });
+  }
+
+  // 已批准
+  html += '<div class="admin-section-title">✅ 已批准用户（' + approved.length + '）</div>';
+  if (approved.length === 0) {
+    html += '<div style="text-align:center;color:#666;padding:16px 0;font-size:13px">暂无</div>';
+  } else {
+    approved.forEach(function(a, i){
+      html += '<div class="admin-user-card">';
+      html += '<div><div style="font-size:14px;color:#1a1a1a;font-weight:600">' + escHtml(a.name) + '</div>';
+      html += '<div style="font-size:11px;color:#666;margin-top:2px">' + escHtml(a.role) + ' · 审批人：' + escHtml(a.approvedBy||'') + '</div></div>';
+      html += '<button onclick="revokeUser(' + i + ')" style="background:#e74c3c;border:none;color:#1a1a1a;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer">撤销</button>';
+      html += '</div>';
+    });
+  }
+
+  // 设置区
+  html += '<div class="admin-section-title">⚙️ 安全设置</div>';
+  html += '<div class="admin-setting-row">';
+  html += '<input type="password" id="new-admin-code" class="login-input" placeholder="新管理员密码（留空不修改）" style="flex:1;padding:10px 12px;font-size:13px">';
+  html += '<button onclick="changeAdminCode()" style="background:#C9A962;border:none;color:#111;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">保存</button>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:10px;margin-top:6px">';
+  html += '<button onclick="exportCustomerSummary()" style="flex:1;background:#C9A962;border:none;color:#111;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📊 导出客户梳理表</button>';
+  html += '<button onclick="exportAllData()" style="flex:1;background:#f8f8f8;border:1px solid #e5e5e5;color:#666;padding:10px;border-radius:8px;font-size:13px;cursor:pointer">📤 导出JSON</button>';
+  html += '<button onclick="if(confirm(\'⚠️ 确认清空所有客户数据？\')){DB.customers=[];saveDB();showToast(\'已清空\');closeAdminPanel();renderAll();}" style="flex:1;background:#f0f0f0;border:1px solid #c00;color:#e74c3c;padding:10px;border-radius:8px;font-size:13px;cursor:pointer">🗑 清空</button>';
+  html += '</div>';
+
+  html += '</div></div>';
+
+  var overlay = document.getElementById('admin-panel-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'admin-panel-overlay';
+    overlay.className = 'admin-panel-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = html;
+  overlay.classList.add('show');
+  overlay.onclick = function(e){ if (e.target===overlay) closeAdminPanel(); };
+  // 渲染顾问列表
+  setTimeout(renderConsultantList, 50);
+}
+
+function closeAdminPanel() {
+  var o = document.getElementById('admin-panel-overlay');
+  if (o) o.classList.remove('show');
+}
+
+// ── 顾问管理 ──────────────────────────────────────────────
+var _currentConsultantUrl = '';
+var _currentConsultantName = '';
+
+function genPwd() {
+  return Math.random().toString(36).slice(2, 8);
+}
+
+function renderConsultantList() {
+  var list = document.getElementById('consultant-list');
+  if (!list) return;
+  var names = Object.keys(DEMO_ACCOUNTS).filter(function(k){ return k !== '程华军'; });
+  if (names.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:#ccc;padding:20px 0;font-size:13px">暂无置业顾问，请添加</div>';
+    return;
+  }
+  var html = '';
+  names.forEach(function(name){
+    var acc = DEMO_ACCOUNTS[name];
+    html += '<div class="admin-user-card" style="margin-bottom:8px;">' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:14px;color:#1a1a1a;font-weight:600">' + escHtml(name) + (acc.disabled ? ' <span style="color:#e74c3c;font-size:11px">[已禁用]</span>' : '') + '</div>' +
+        '<div style="font-size:11px;color:#666;margin-top:2px">密码: ' + escHtml(acc.pwd) + '</div></div>' +
+      '<div style="display:flex;gap:5px;flex-shrink:0;">' +
+        '<button onclick="openConsultantQR(\'' + escHtml(name) + '\')" style="background:#C9A962;border:none;color:#111;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">📱 二维码</button>' +
+        '<button onclick="toggleAccount(\'' + escHtml(name) + '\')" style="background:#e8e8e8;border:none;color:#666;font-size:12px;padding:5px 8px;border-radius:4px;cursor:pointer">' + (acc.disabled ? '<span style="color:#2ecc71">启用</span>' : '<span style="color:#e74c3c">禁用</span>') + '</button>' +
+        '<button onclick="removeConsultant(\'' + escHtml(name) + '\')" style="background:#f5f5f5;border:none;color:#e74c3c;font-size:12px;padding:5px 8px;border-radius:4px;cursor:pointer">删</button>' +
+      '</div></div>';
+  });
+  list.innerHTML = html;
+}
+
+function addConsultant() {
+  var nameEl = document.getElementById('new-consultant-name');
+  var pwdEl = document.getElementById('new-consultant-pwd');
+  var name = (nameEl||{value:''}).value.trim();
+  var pwd = (pwdEl||{value:''}).value.trim();
+  if (!name) { showToast('请输入姓名', 'err'); return; }
+  if (DEMO_ACCOUNTS[name]) { showToast('「' + name + '」已存在', 'err'); return; }
+  if (!pwd) pwd = genPwd();
+  DEMO_ACCOUNTS[name] = { role: '置业顾问', pwd: pwd };
+  saveDB();
+  showToast('✅ 已添加「' + name + '」密码: ' + pwd, 'success');
+  if (nameEl) nameEl.value = '';
+  if (pwdEl) pwdEl.value = '';
+  renderConsultantList();
+  refreshNavForRole(); // 刷新顾问列表（导航）
+}
+
+function removeConsultant(name) {
+  if (!confirm('确认删除顾问「' + name + '」？该操作不可撤销。')) return;
+  delete DEMO_ACCOUNTS[name];
+  saveDB();
+  showToast('已删除「' + name + '」');
+  renderConsultantList();
+  refreshNavForRole();
+}
+
+function openConsultantQR(name) {
+  _currentConsultantName = name;
+  var baseUrl = location.origin + location.pathname;
+  _currentConsultantUrl = baseUrl + '?u=' + encodeURIComponent(name);
+  var modal = document.getElementById('qr-modal');
+  var nameEl = document.getElementById('qr-modal-name');
+  var urlEl = document.getElementById('qr-modal-url');
+  var canvas = document.getElementById('qr-modal-canvas');
+  if (nameEl) nameEl.textContent = '👤 ' + name + ' · 专属二维码';
+  if (urlEl) urlEl.textContent = _currentConsultantUrl;
+  if (modal) modal.style.display = 'flex';
+  setTimeout(function(){
+    if (canvas) generateQRCode(canvas, _currentConsultantUrl);
+  }, 100);
+}
+
+function closeQRModal() {
+  var m = document.getElementById('qr-modal');
+  if (m) m.style.display = 'none';
+}
+
+function downloadQR() {
+  var canvas = document.getElementById('qr-modal-canvas');
+  if (!canvas) return;
+  var link = document.createElement('a');
+  link.download = 'yuchen_qr_' + _currentConsultantName + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('✅ 二维码已下载', 'success');
+}
+
+function copyConsultantUrl() {
+  var url = _currentConsultantUrl;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function(){
+      showToast('✅ 链接已复制，可发给「' + _currentConsultantName + '」', 'success');
+    });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = url;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('✅ 链接已复制', 'success');
+  }
+}
+
+function approveUser(idx) {
+  var p = (DB.pendingUsers||[])[idx];
+  if (!p) return;
+  if (!DB.approvedUsers) DB.approvedUsers = [];
+  DB.approvedUsers.push({ name: p.name, role: p.role, approvedAt: new Date().toISOString().slice(0,10), approvedBy: '程华军' });
+  DB.pendingUsers.splice(idx, 1);
+  saveDB();
+  showToast('✓ 已批准 ' + p.name);
+  showAdminPanel();
+}
+
+function rejectUser(idx) {
+  var p = (DB.pendingUsers||[])[idx];
+  if (!p) return;
+  if (!confirm('确认拒绝 ' + p.name + ' 的申请？')) return;
+  DB.pendingUsers.splice(idx, 1);
+  saveDB();
+  showToast('已拒绝');
+  showAdminPanel();
+}
+
+function revokeUser(idx) {
+  var a = (DB.approvedUsers||[])[idx];
+  if (!a) return;
+  if (!confirm('确认撤销 ' + a.name + ' 的访问权限？')) return;
+  DB.approvedUsers.splice(idx, 1);
+  if (DB.currentUser && DB.currentUser.name === a.name) {
+    DB.currentUser = null;
+    saveDB();
+    location.reload();
+    return;
+  }
+  saveDB();
+  showToast('已撤销');
+  showAdminPanel();
+}
+
+function changeAdminCode() {
+  var newCode = (document.getElementById('new-admin-code')||{}).value || '';
+  if (newCode && newCode.length >= 4) {
+    ADMIN_CODE = newCode;
+    document.getElementById('new-admin-code').value = '';
+    showToast('✓ 管理员密码已更新为：' + newCode);
+  } else if (newCode && newCode.length < 4) {
+    showToast('密码至少4位', 'err');
+  } else {
+    showToast('未输入新密码');
+  }
+}
+
+function toggleAccount(name) {
+  if (DEMO_ACCOUNTS[name]) {
+    DEMO_ACCOUNTS[name].disabled = !DEMO_ACCOUNTS[name].disabled;
+    showAdminPanel();
+    showToast(name + (DEMO_ACCOUNTS[name].disabled ? ' 已禁用' : ' 已启用'));
+  }
+}
+
+function maskPhone(phone) {
+  if (!phone) return '';
+  phone = String(phone).replace(/\D/g,'');
+  if (phone.length >= 7) return phone.slice(0,3) + '****' + phone.slice(-4);
+  return phone;
+}
+
+function exportCustomerSummary() {
+  var today = new Date().toISOString().slice(0,10);
+  var customers = DB.customers || [];
+  function doExport() {
+    var LEVEL_COLOR = {A:'27AE60',B:'2980B9',C:'95A5A6',D:'E67E22'};
+    var DEAL_COLOR = {'\u8ba2\u8d2d':'E67E22','\u7b7e\u7ea6':'27AE60','\u672a\u6210\u4ea4':'95A5A6'};
+    var hdrs = [
+      '\u5e8f\u53f7','\u59d3\u540d','\u6027\u522b','\u5e74\u9f84','\u7535\u8bdd(\u8131\u654f)',
+      '\u610f\u5411\u9762\u79ef','\u610f\u5411\u680a\u6570','\u7b49\u7ea7','\u9500\u552e\u9636\u6bb5',
+      '\u6210\u4ea4\u72b6\u6001','\u6210\u4ea4\u65e5\u671f','\u987e\u95ee','\u6e20\u9053',
+      '\u5c45\u4f4f\u5c0f\u533a','\u5bf9\u6bd4\u9879\u76ee','\u804c\u4e1a','\u662f\u5426\u5df2\u7b97\u4ef7',
+      'SOACE\u5206\u6790','\u6297\u6027\u5206\u6790','\u884c\u52a8\u65b9\u6848',
+      '\u6700\u540e\u8ddf\u8fdb\u65e5\u671f','\u6700\u8fd1\u8ddf\u8fdb\u65b9\u5f0f','\u8ddf\u8fdb\u8bb0\u5f55(\u6700\u65b05\u6761)',
+      '\u590d\u8bbf\u6b21\u6570','\u521b\u5efa\u65e5\u671f','\u6765\u6e90','\u516c\u6d77\u6c60','\u5ba2\u6237ID','\u7b97\u4ef7\u7ed3\u679c'
+    ];
+    var lvOrd = {A:0,B:1,C:2,D:3};
+    var stOrd = {'\u7b7e\u7ea6':0,'\u8ba2\u8d2d':1,'\u8ba4\u7b79':2,'\u6765\u8bbf':3,'\u95ee\u8be2':4};
+    var sorted = customers.slice().sort(function(a,b){
+      var la=lvOrd[a.level]||9, lb=lvOrd[b.level]||9;
+      if(la!==lb) return la-lb;
+      var sa=stOrd[a.dealStatus]||9, sb=stOrd[b.dealStatus]||9;
+      if(sa!==sb) return sa-sb;
+      return (b.createdAt||'').localeCompare(a.createdAt||'');
+    });
+    var aoa = [hdrs];
+    sorted.forEach(function(c){
+      var fu = (c.followUps||[]).slice().reverse().slice(0,5);
+      var fuStr = fu.map(function(f){return (f.date||'')+' '+f.method+'\uff1a'+(f.note||'');}).join('\n');
+      aoa.push([
+        0, c.name||'', c.gender||'', c.age||'',
+        maskPhone(c.phone),
+        c.area||'', c.buildingIntent||'', c.level||'',
+        c.salesStage||'\u95ee\u8be2', c.dealStatus||'\u672a\u6210\u4ea4', c.dealDate||'',
+        c.consultant||'', c.channel||'', c.residence||'',
+        c.competitor||'', c.job||'', c.calculated?'\u662f':'\u5426',
+        c.soace||'', c.resistance||'', c.actionPlan||'',
+        c.followUpDate||'',
+        fu.length>0?fu[0].method||'':'',
+        fuStr, c.revisitCount||0,
+        c.createdAt?c.createdAt.slice(0,10):'',
+        c.source||'', c.inPool?'\u662f':'\u5426',
+        (c.id||'').slice(0,8),
+        c.calculatedPrice ? (c.calculatedPrice.building ? c.calculatedPrice.building + ' ' + c.calculatedPrice.price + '万' : c.calculatedPrice.price + '万') : ''
+      ]);
+    });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [
+      {wch:5},{wch:10},{wch:5},{wch:5},{wch:14},
+      {wch:8},{wch:8},{wch:5},{wch:9},
+      {wch:9},{wch:11},{wch:10},{wch:8},{wch:14},
+      {wch:12},{wch:10},{wch:6},
+      {wch:32},{wch:32},{wch:32},
+      {wch:12},{wch:10},{wch:46},
+      {wch:6},{wch:12},{wch:8},{wch:6},{wch:10}
+    ];
+    var numToCol = function(n){
+      var sc='';
+      while(n>0){var m=(n-1)%26;sc=String.fromCharCode(65+m)+sc;n=(n-m-1)/26;}
+      return sc;
+    };
+    ws['!autofilter'] = {ref:'A1:'+numToCol(hdrs.length)+aoa.length};
+    var ref = XLSX.utils.decode_range(ws['!ref']);
+    for(var col=ref.s.c;col<=ref.e.c;col++){
+      var addr = XLSX.utils.encode_cell({r:0,c:col});
+      if(!ws[addr]) continue;
+      ws[addr].s = {
+        font:{bold:true,color:{rgb:'FFFFFF'}},
+        fill:{fgColor:{rgb:'C9A962'}},
+        alignment:{horizontal:'center',vertical:'center',wrapText:true},
+        border:{top:{style:'thin',color:{rgb:'FFFFFF'}},bottom:{style:'thin',color:{rgb:'FFFFFF'}},left:{style:'thin',color:{rgb:'FFFFFF'}},right:{style:'thin',color:{rgb:'FFFFFF'}}}
+      };
+    }
+    for(var r=1;r<aoa.length;r++){
+      var cObj = sorted[r-1];
+      var isEven = r%2===0;
+      var bg = isEven?'F8F8F8':'FFFFFF';
+      for(var col=ref.s.c;col<=ref.e.c;col++){
+        var addr = XLSX.utils.encode_cell({r:r,c:col});
+        if(!ws[addr]) continue;
+        ws[addr].s = {
+          fill:{fgColor:{rgb:bg}},
+          alignment:{vertical:'center',wrapText:true},
+          border:{top:{style:'thin',color:{rgb:'E8E8E8'}},bottom:{style:'thin',color:{rgb:'E8E8E8'}},left:{style:'thin',color:{rgb:'E8E8E8'}},right:{style:'thin',color:{rgb:'E8E8E8'}}}
+        };
+      }
+      if(LEVEL_COLOR[cObj.level]){
+        var a2 = XLSX.utils.encode_cell({r:r,c:7});
+        if(ws[a2]){
+          ws[a2].s.fill={fgColor:{rgb:LEVEL_COLOR[cObj.level]}};
+          ws[a2].s.font={bold:true,color:{rgb:'FFFFFF'}};
+          ws[a2].s.alignment={horizontal:'center',vertical:'center'};
+        }
+      }
+      var ds = cObj.dealStatus||'\u672a\u6210\u4ea4';
+      if(DEAL_COLOR[ds]){
+        var a3 = XLSX.utils.encode_cell({r:r,c:9});
+        if(ws[a3]){
+          ws[a3].s.fill={fgColor:{rgb:DEAL_COLOR[ds]}};
+          ws[a3].s.font={bold:true,color:{rgb:'FFFFFF'}};
+          ws[a3].s.alignment={horizontal:'center',vertical:'center'};
+        }
+      }
+      if(cObj.inPool){
+        var a4 = XLSX.utils.encode_cell({r:r,c:24});
+        if(ws[a4]){
+          ws[a4].s={fill:{fgColor:{rgb:'FDEBD0'}},font:{bold:true},alignment:{horizontal:'center',vertical:'center'}};
+        }
+      }
+      var a0 = XLSX.utils.encode_cell({r:r,c:0});
+      ws[a0] = {v:r,t:'n',s:{fill:{fgColor:{rgb:bg}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'E8E8E8'}},bottom:{style:'thin',color:{rgb:'E8E8E8'}},left:{style:'thin',color:{rgb:'E8E8E8'}},right:{style:'thin',color:{rgb:'E8E8E8'}}}}};
+    }
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '\u5ba2\u6237\u6863\u6848');
+    XLSX.writeFile(wb, '\u4e2d\u5c71\u5fa1\u5bb6\u5ba2\u6237\u6863\u6848_'+today+'.xlsx');
+    showToast('\u2705 Excel\u5df2\u751f\u6210\uff0c\u5171'+customers.length+'\u6761\u8bb0\u5f55', 'success');
+  }
+  if(typeof XLSX !== 'undefined'){
+    doExport();
+  } else {
+    window._exportFn = doExport;
+    var sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    sc.onload = function(){ window._exportFn(); window._exportFn = null; };
+    sc.onerror = function(){ showToast('\u7f51\u7edc\u4e0d\u7a33\u5b9a\uff0c\u8bf7\u91cd\u8bd5', 'error'); window._exportFn = null; };
+    document.head.appendChild(sc);
+  }
+}
+
+// ================================================================
+// 工作台看板 → 点击进入客户列表
+// ================================================================
+function showStatList(shown, label) {
+  if (shown === 0) { toast('无符合条件的客户', 'normal'); return; }
+  var todayStr = today();
+  var myCs = getMyCustomers();
+  var filtered = [];
+  if (label === '所有') filtered = myCs;
+  else if (label === '逾期') filtered = myCs.filter(function(c){ return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; });
+  else if (label === 'A级') filtered = myCs.filter(function(c){ return c.level === 'A'; });
+  else if (label === 'B级') filtered = myCs.filter(function(c){ return c.level === 'B'; });
+  else if (label === 'C级') filtered = myCs.filter(function(c){ return c.level === 'C'; });
+  else if (label === 'D级') filtered = myCs.filter(function(c){ return c.level === 'D'; });
+  else if (label === '本周新增') filtered = myCs.filter(function(c){ return c.createdAt && daysBetween(todayStr, c.createdAt.slice(0,10)) <= 7; });
+  else if (label === '3天内待跟进') filtered = myCs.filter(function(c){
+    if (!c.followUpDate) return false;
+    var d = daysBetween(c.followUpDate, todayStr);
+    return d >= 0 && d <= 3;
+  });
+
+  var getStatusTag = function(c) {
+    var st = getFollowupStatus(c, todayStr);
+    return '<span class="tag ' + (st.cls || 'tag-normal') + '">' + (st.text || '') + '</span>';
+  };
+  var stageTag = function(s) {
+    var m = {'问询':'问','来访':'访','认筹':'筹','认购':'购','签约':'签'};
+    return '<span style="background:rgba(201,169,98,0.15);color:var(--gold);padding:2px 7px;border-radius:6px;font-size:11px;font-weight:600;">' + (m[s] || s) + '</span>';
+  };
+
+  var cardsHtml = '';
+  filtered.forEach(function(c) {
+    var phoneMask = maskPhone(c.phone || '');
+    var dealTag = c.dealStatus && c.dealStatus !== '未成交'
+      ? '<span style="background:rgba(46,204,113,0.15);color:var(--green);padding:2px 7px;border-radius:6px;font-size:11px;font-weight:600;">' + c.dealStatus + '</span>'
+      : '';
+    var priceTag = c.calculatedPrice && c.calculatedPrice.price
+      ? '<span style="background:rgba(201,169,98,0.15);color:var(--gold);padding:2px 7px;border-radius:6px;font-size:11px;font-weight:600;">💰 ' + escHtml(c.calculatedPrice.price) + '万</span>'
+      : '';
+    var poolTag = c.inPool ? '<span style="background:#FDEBD0;color:#E67E22;padding:2px 7px;border-radius:6px;font-size:11px;">公海</span>' : '';
+    var lvlColor = {'A':'#27AE60','B':'#2980B9','C':'#95A5A6','D':'#E67E22'}[c.level] || '#95A5A6';
+    cardsHtml +=
+      '<div class="customer-card" data-id="' + c.id + '" style="background:#fff;border-radius:12px;padding:13px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;border-left:3px solid ' + lvlColor + ';">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+          '<span class="level-badge ' + c.level + '">' + c.level + '</span>' +
+          '<span style="font-size:14px;font-weight:600;color:#1a1a1a;flex:1;">' + escRaw(c.name) + '</span>' +
+          '<span style="font-size:11px;color:var(--text-dim);">' + escHtml(phoneMask) + '</span>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
+          stageTag(c.salesStage || '问询') +
+          dealTag + priceTag + poolTag +
+        '</div>' +
+        '<div style="margin-top:6px;font-size:11px;color:var(--text-dim);">' +
+          (c.area ? escHtml(c.area) : '') + (c.buildingIntent ? ' · ' + escHtml(c.buildingIntent) : '') + (c.consultant ? ' · ' + escHtml(c.consultant) : '') +
+        '</div>' +
+      '</div>';
+  });
+
+  var html = '<div style="position:fixed;inset:0;z-index:200;background:#f5f5f5;display:flex;flex-direction:column;">' +
+    '<div style="padding:16px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
+      '<div onclick="document.getElementById(\'stat-list-overlay\').style.display=\'none\';document.body.style.overflow=\'\';" style="font-size:22px;cursor:pointer;min-width:44px;text-align:center;line-height:1;">←</div>' +
+      '<div style="flex:1;">' +
+        '<div style="font-size:16px;font-weight:700;color:#1a1a1a;">' + escHtml(label) + ' · ' + filtered.length + ' 人</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">点击客户卡片查看详情</div>' +
+      '</div>' +
+    '</div>' +
+    '<div id="stat-list-scroll" style="flex:1;overflow-y:auto;padding:12px 14px;">' + cardsHtml + '</div>' +
+  '</div>';
+  var overlay = document.getElementById('detail-overlay');
+  if (!overlay) { overlay = document.createElement('div'); overlay.id = 'detail-overlay'; document.body.appendChild(overlay); }
+  overlay.innerHTML = '<div id="stat-list-overlay">' + html + '</div>';
+  overlay.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  document.querySelectorAll('.customer-card[data-id]').forEach(function(card) {
+    card.onclick = function() {
+      var id = card.dataset.id;
+      overlay.style.display = 'none';
+      document.body.style.overflow = '';
+      setTimeout(function(){ openDetail(id); }, 80);
+    };
+  });
+}
+
+// ================================================================
+// 算价格弹窗
+// ================================================================
+var _pcCurrentId = null;
+function openPriceCalc(customerId) {
+  if (!customerId) { toast('请先打开客户详情页', 'error'); return; }
+  _pcCurrentId = customerId;
+  var c = DB.customers.find(function(x){ return x.id === customerId; });
+  if (!c) return;
+  var ex = c.calculatedPrice || {};
+  var bldOpts = [
+    '6栋601（179㎡）','6栋602（179㎡）','6栋603（179㎡）','6栋604（179㎡）',
+    '5栋501（119㎡）','5栋502（119㎡）','5栋503（143㎡）','5栋504（143㎡）'
+  ].map(function(b){ return '<option value="' + escHtml(b) + '"' + (ex.building === b ? ' selected' : '') + '>' + escHtml(b) + '</option>'; }).join('');
+  var html = '<div style="position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);padding:16px;" onclick="if(event.target===this)closePriceCalc()">' +
+    '<div style="background:#fff;border-radius:16px;width:100%;max-width:400px;overflow:hidden;">' +
+      '<div style="padding:16px 20px;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:space-between;">' +
+        '<span style="font-weight:700;font-size:16px;">💰 算价格</span>' +
+        '<span onclick="closePriceCalc()" style="font-size:22px;cursor:pointer;line-height:1;">×</span>' +
+      '</div>' +
+      '<div style="padding:20px;">' +
+        '<div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.5;">' +
+          '客户：<b style="color:#1a1a1a;">' + escRaw(c.name) + '</b>' +
+          (c.area ? '　意向：<b style="color:#1a1a1a;">' + escHtml(c.area) + '</b>' : '') +
+        '</div>' +
+        '<div style="margin-bottom:14px;">' +
+          '<label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">选择房源</label>' +
+          '<select id="pc-building" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fff;color:#1a1a1a;box-sizing:border-box;">' +
+            '<option value="">请选择楼栋房源</option>' + bldOpts +
+          '</select>' +
+        '</div>' +
+        '<div style="margin-bottom:14px;">' +
+          '<label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">总价（万元）</label>' +
+          '<input type="number" id="pc-price" placeholder="如：428" value="' + (ex.price || '') + '" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fff;color:#1a1a1a;box-sizing:border-box;">' +
+        '</div>' +
+        '<div style="background:#f8f8f8;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--text-dim);line-height:1.6;">' +
+          '算价结果将展示在客户详情页顶部，方便快速查阅客户意向房源与报价。' +
+        '</div>' +
+        '<button onclick="savePriceCalc()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--gold);color:#fff;font-size:15px;font-weight:700;cursor:pointer;">✅ 保存算价结果</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  var overlay = document.getElementById('detail-overlay');
+  if (!overlay) { overlay = document.createElement('div'); overlay.id = 'detail-overlay'; document.body.appendChild(overlay); }
+  overlay.innerHTML = html;
+  overlay.style.display = 'block';
+}
+function closePriceCalc() {
+  var overlay = document.getElementById('detail-overlay');
+  if (overlay) overlay.style.display = 'none';
+  _pcCurrentId = null;
+}
+function savePriceCalc() {
+  var cid = _pcCurrentId;
+  if (!cid) { toast('客户ID无效', 'error'); return; }
+  var building = (document.getElementById('pc-building') || {value:''}).value;
+  var price = (document.getElementById('pc-price') || {value:''}).value.trim();
+  var c = DB.customers.find(function(x){ return x.id === cid; });
+  if (!c) return;
+  if (!building && !price) { toast('请至少选择房源或输入价格', 'error'); return; }
+  c.calculated = true;
+  c.calculatedPrice = { building: building, price: price, date: new Date().toISOString().slice(0,10) };
+  c.calculatedPriceNum = price ? parseFloat(price) : 0;
+  saveDB();
+  closePriceCalc();
+  openDetail(cid);
+  toast('✅ 算价结果已保存', 'success');
+}
+
+// ================================================================
+// 删除客户
+// ================================================================
+function deleteCustomer(customerId) {
+  var c = DB.customers.find(function(x){ return x.id === customerId; });
+  if (!c) return;
+  var msg = '点击确认删除';
+  var body = '确定要删除客户 <b>' + escHtml(c.name) + '</b> 吗？此操作无法撤销。';
+  confirmDlg(msg, body, function() {
+    DB.customers = DB.customers.filter(function(x){ return x.id !== customerId; });
+    saveDB();
+    closeDetail();
+    if (typeof renderAll === 'function') renderAll();
+    if (typeof renderWorkbench === 'function') renderWorkbench();
+    toast('✅ 已删除。', 'success');
+  });
+}
+
+
+function exportAllData() {
+  var blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '中山御宸全量数据_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('已导出全量数据');
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderAll() {
+  var moved = autoPoolCheck();
+  renderWorkbench && renderWorkbench();
+  renderCust && renderCust();
+  renderStat && renderStat();
+  renderMe && renderMe();
+  if (moved && moved.length > 0) toast('🔄 ' + moved.length + '位客户超时自动移入公海池', 'success');
+}
+
+</script>
+</body>
+</html>
