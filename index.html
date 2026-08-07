@@ -2161,7 +2161,6 @@ function renderStatListOverlay(filtered, label) {
 // ============================================================
 function showAdminPanel() {
   var pending = DB.pendingUsers || [];
-  var approved = (DB.approvedUsers || []).filter(function(u) { return !(u.name === '程华军' && u.role === '销售经理'); });
 
   var html = '<div style="background:#ffffff;border:1px solid #C9A962;border-radius:16px;width:100%;max-width:480px;margin:20px 0 40px;overflow:hidden;">' +
     '<div style="padding:16px 20px;background:linear-gradient(135deg,rgba(201,169,98,0.18),rgba(201,169,98,0.06));border-bottom:1px solid #e5e5e5;display:flex;align-items:center;justify-content:space-between;">' +
@@ -2170,20 +2169,22 @@ function showAdminPanel() {
     '</div>' +
     '<div style="padding:16px;">';
 
-  // Consultant management
-  html += '<div style="color:#C9A962;font-size:13px;font-weight:600;margin-bottom:8px;">👥 置业顾问管理</div>';
-  html += '<div style="font-size:12px;color:#666;margin-bottom:10px;">添加顾问后可生成专属二维码发给对方</div>';
+  // Add consultant
+  html += '<div style="color:#C9A962;font-size:13px;font-weight:600;margin-bottom:6px;">➕ 添加顾问</div>';
   html += '<div style="display:flex;gap:8px;margin-bottom:14px;">';
   html += '<input type="text" id="new-consultant-name" class="login-input" placeholder="姓名" style="flex:1;padding:9px 12px;font-size:13px">';
   html += '<input type="text" id="new-consultant-pwd" class="login-input" placeholder="密码（留空自动生成）" style="width:140px;padding:9px 12px;font-size:13px">';
   html += '<button onclick="addConsultant()" style="background:#C9A962;border:none;color:#111;padding:9px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">添加</button>';
   html += '</div>';
-  html += '<div id="consultant-list" style="max-height:300px;overflow-y:auto;"></div>';
+
+  // Consultant list with passwords
+  html += '<div style="color:#C9A962;font-size:13px;font-weight:600;margin-bottom:6px;">👥 顾问账号列表</div>';
+  html += '<div id="consultant-list" style="max-height:400px;overflow-y:auto;margin-bottom:12px;"></div>';
 
   // Pending approvals
-  html += '<div style="color:#C9A962;font-size:13px;font-weight:600;margin:16px 0 8px;">⏳ 待审批（' + pending.length + '）</div>';
+  html += '<div style="color:#C9A962;font-size:13px;font-weight:600;margin:16px 0 8px;">⏳ 待审批申请（' + pending.length + '）</div>';
   if (pending.length === 0) {
-    html += '<div style="text-align:center;color:#666;padding:20px 0;font-size:13px;">暂无待审批申请</div>';
+    html += '<div style="text-align:center;color:#666;padding:16px 0;font-size:13px;">暂无待审批申请</div>';
   } else {
     pending.forEach(function(p, i) {
       html += '<div style="background:#f8f8f8;border:1px solid #e5e5e5;border-left:3px solid #f39c12;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">';
@@ -2194,31 +2195,6 @@ function showAdminPanel() {
       html += '</div></div>';
     });
   }
-
-  // Approved
-  html += '<div style="color:#C9A962;font-size:13px;font-weight:600;margin:16px 0 8px;">✅ 已批准用户（' + approved.length + '）</div>';
-  if (approved.length === 0) {
-    html += '<div style="text-align:center;color:#666;padding:16px 0;font-size:13px;">暂无</div>';
-  } else {
-    approved.forEach(function(a, i) {
-      html += '<div style="background:#f8f8f8;border:1px solid #e5e5e5;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">';
-      html += '<div><div style="font-size:14px;font-weight:600;">' + escHtml(a.name) + '</div><div style="font-size:11px;color:#666;">' + escHtml(a.role) + ' · 审批人：' + escHtml(a.approvedBy || '') + '</div></div>';
-      html += '<button onclick="revokeUser(' + i + ')" style="background:#e74c3c;border:none;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;">撤销</button>';
-      html += '</div>';
-    });
-  }
-
-  // Settings
-  html += '<div style="color:#C9A962;font-size:13px;font-weight:600;margin:16px 0 8px;">⚙️ 安全设置</div>';
-  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
-  html += '<input type="password" id="new-manager-pwd" class="login-input" placeholder="修改经理登录密码" style="flex:1;padding:10px 12px;font-size:13px">';
-  html += '<button onclick="changeManagerPwd()" style="background:#C9A962;border:none;color:#111;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">保存</button>';
-  html += '</div>';
-  html += '<div style="display:flex;gap:10px;margin-top:6px">';
-  html += '<button onclick="exportCustomerSummary()" style="flex:1;background:#C9A962;border:none;color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">📊 导出梳理表</button>';
-  html += '<button onclick="exportAllData()" style="flex:1;background:#f8f8f8;border:1px solid #e5e5e5;color:#666;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;">📤 导出JSON</button>';
-  html += '<button onclick="if(confirm(\'确认清空所有客户数据？\')){DB.customers=[];saveDB();toast(\'已清空\',\'success\');closeAdminPanel();renderAll();}" style="flex:1;background:#f0f0f0;border:1px solid #c00;color:#e74c3c;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;">🗑 清空</button>';
-  html += '</div>';
 
   html += '</div></div>';
 
@@ -2239,14 +2215,6 @@ function closeAdminPanel() {
 // === Consultant Management ===
 function genPwd() { return Math.random().toString(36).slice(2, 8); }
 
-function copyConsultantLink(name) {
-  var baseUrl = location.origin + location.pathname;
-  var url = baseUrl + '?u=' + encodeURIComponent(name);
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(url).then(function() { toast('已复制「' + name + '」专属链接', 'success'); });
-  } else { fallbackCopy(url); }
-}
-
 function renderConsultantList() {
   var list = document.getElementById('consultant-list');
   if (!list) return;
@@ -2258,16 +2226,49 @@ function renderConsultantList() {
   var html = '';
   names.forEach(function(name) {
     var acc = DEMO_ACCOUNTS[name];
-    html += '<div style="background:#f8f8f8;border:1px solid #e5e5e5;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">' +
-      '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;">' + escHtml(name) + (acc.disabled ? ' <span style="color:#e74c3c;font-size:11px;">[已禁用]</span>' : '') + '</div>' +
-      '<div style="font-size:11px;color:#666;">密码: ' + escHtml(acc.pwd) + '</div></div>' +
-      '<div style="display:flex;gap:5px;flex-shrink:0;">' +
-        '<button onclick="copyConsultantLink(\'' + escHtml(name) + '\')" style="background:#C9A962;border:none;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">🔗</button>' +
-        '<button onclick="toggleAccount(\'' + escHtml(name) + '\')" style="background:#e8e8e8;border:none;color:#666;font-size:12px;padding:5px 8px;border-radius:4px;cursor:pointer;">' + (acc.disabled ? '启用' : '禁用') + '</button>' +
-        '<button onclick="removeConsultant(\'' + escHtml(name) + '\')" style="background:#f5f5f5;border:none;color:#e74c3c;font-size:12px;padding:5px 8px;border-radius:4px;cursor:pointer;">删</button>' +
-      '</div></div>';
+    var uid = 'cpwd-' + name.replace(/[^a-zA-Z0-9一-龥]/g, '');
+    html += '<div style="background:#f8f8f8;border:1px solid #e5e5e5;border-radius:10px;padding:12px 14px;margin-bottom:8px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+        '<div style="font-size:14px;font-weight:600;">' + escHtml(name) + (acc.disabled ? ' <span style="color:#e74c3c;font-size:11px;">[已禁用]</span>' : '') + '</div>' +
+        '<div style="display:flex;gap:5px;flex-shrink:0;">' +
+          '<button onclick="toggleAccount(\'' + escHtml(name) + '\')" style="background:#e8e8e8;border:none;color:#666;font-size:11px;padding:4px 8px;border-radius:4px;cursor:pointer;">' + (acc.disabled ? '启用' : '禁用') + '</button>' +
+          '<button onclick="removeConsultant(\'' + escHtml(name) + '\')" style="background:#f5f5f5;border:none;color:#e74c3c;font-size:11px;padding:4px 8px;border-radius:4px;cursor:pointer;">删除</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:6px;padding:8px 10px;">' +
+        '<span style="font-size:11px;color:#888;flex-shrink:0;">密码：</span>' +
+        '<span id="' + uid + '" style="font-size:14px;font-weight:600;font-family:monospace;flex:1;cursor:pointer;user-select:none;overflow:hidden;text-overflow:ellipsis;" onclick="togglePwdVis(\'' + uid + '\')" title="点击显示/隐藏密码">●●●●●●</span>' +
+        '<button onclick="copyPwd(\'' + escHtml(acc.pwd) + '\')" style="background:#C9A962;border:none;color:#fff;font-size:11px;padding:4px 8px;border-radius:4px;cursor:pointer;flex-shrink:0;" title="复制密码">📋</button>' +
+      '</div>' +
+    '</div>';
   });
   list.innerHTML = html;
+}
+
+function togglePwdVis(uid) {
+  var el = document.getElementById(uid);
+  if (!el) return;
+  var names = Object.keys(DEMO_ACCOUNTS).filter(function(k) { return k !== '程华军'; });
+  for (var i = 0; i < names.length; i++) {
+    var cid = 'cpwd-' + names[i].replace(/[^a-zA-Z0-9一-龥]/g, '');
+    if (cid === uid) {
+      var acc = DEMO_ACCOUNTS[names[i]];
+      if (el.textContent === '●●●●●●') {
+        el.textContent = acc.pwd;
+        el.style.userSelect = 'text';
+      } else {
+        el.textContent = '●●●●●●';
+        el.style.userSelect = 'none';
+      }
+      break;
+    }
+  }
+}
+
+function copyPwd(pwd) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(pwd).then(function() { toast('密码已复制', 'success'); });
+  } else { fallbackCopy(pwd); }
 }
 
 function addConsultant() {
@@ -2317,32 +2318,6 @@ function rejectUser(idx) {
   saveDB();
   toast('已拒绝', 'success');
   showAdminPanel();
-}
-
-function revokeUser(idx) {
-  var a = (DB.approvedUsers || [])[idx];
-  if (!a) return;
-  if (!confirm('确认撤销 ' + a.name + ' 的访问权限？')) return;
-  DB.approvedUsers.splice(idx, 1);
-  if (DB.currentUser && DB.currentUser.name === a.name) {
-    DB.currentUser = null;
-    saveDB();
-    location.reload();
-    return;
-  }
-  saveDB();
-  toast('已撤销', 'success');
-  showAdminPanel();
-}
-
-function changeManagerPwd() {
-  var newPwd = (document.getElementById('new-manager-pwd') || {}).value || '';
-  if (!newPwd) { toast('请输入新密码', 'error'); return; }
-  if (newPwd.length < 4) { toast('密码至少4位', 'error'); return; }
-  DEMO_ACCOUNTS['程华军'] = { role: '销售经理', pwd: newPwd };
-  document.getElementById('new-manager-pwd').value = '';
-  saveDB();
-  toast('经理密码已更新', 'success');
 }
 
 function toggleAccount(name) {
