@@ -2668,21 +2668,23 @@ function doLogin(name, role) {
   if (err) err.style.display = 'none';
   if (!name) { showToast('请输入姓名', 'err'); return; }
 
-  // 管理员快捷入口：选"销售经理"+姓名"程华军" → 弹出验证码
+  // 销售经理：密码框同时支持管理员验证码(yuchen2026)和账号密码(chj2026)
   if (name === '程华军' && role === '销售经理') {
-    var code = prompt('请输入管理员验证码（默认 yuchen2026）：');
-    if (code !== ADMIN_CODE) {
-      if (code !== null) showToast('❌ 验证码错误', 'err');
+    var isAdmin = (pwd === ADMIN_CODE);
+    var acc = DEMO_ACCOUNTS['程华军'];
+    if (pwd !== ADMIN_CODE && (!acc || acc.pwd !== pwd)) {
+      var el2 = document.getElementById('login-error');
+      if (el2) { el2.textContent = '密码错误'; el2.style.display = 'block'; }
       return;
     }
-    DB.currentUser = { name: '程华军', role: '销售经理', isAdmin: true };
+    DB.currentUser = { name: '程华军', role: '销售经理', isAdmin: isAdmin };
     if (!DB.approvedUsers) DB.approvedUsers = [];
     saveDB();
     closeLoginScreen();
     refreshNavForRole();
     enterApp();
-    showToast('👑 管理员身份已激活');
-    setTimeout(function(){ showAdminPanel(); }, 400);
+    showToast(isAdmin ? '管理员身份已激活' : '欢迎回来，程华军');
+    if (isAdmin) setTimeout(function(){ showAdminPanel(); }, 400);
     return;
   }
 
