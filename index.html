@@ -43,10 +43,6 @@ body { display: flex; flex-direction: column; }
 .login-submit { padding: 16px; background: var(--gold); color: #111; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
 .login-submit:active { opacity: 0.8; }
 
-/* ADMIN MODAL */
-#admin-login-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99998; align-items: center; justify-content: center; padding: 20px; }
-.admin-modal-box { background: #fff; border: 1px solid var(--gold); border-radius: 16px; padding: 28px 24px; width: 100%; max-width: 340px; text-align: center; }
-
 /* TOP BAR */
 #topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; padding-top: calc(12px + env(safe-area-inset-top)); background: var(--bg); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 100; }
 #topbar-title { font-size: 17px; font-weight: 600; color: var(--text); }
@@ -329,23 +325,28 @@ body { display: flex; flex-direction: column; }
     <div id="login-error" style="color:#e74c3c;font-size:12px;text-align:center;display:none;margin-top:-8px"></div>
     <button class="login-submit" id="login-btn">进入系统</button>
     <div style="text-align:center;margin-top:20px">
-      <button id="admin-login-link" style="background:none;border:none;color:#555;font-size:12px;cursor:pointer;text-decoration:underline">管理员登录</button>
+      <button id="register-link" style="background:none;border:none;color:#555;font-size:12px;cursor:pointer;text-decoration:underline">申请注册账号</button>
     </div>
     <div style="text-align:center;margin-top:14px;font-size:11px;color:#888;line-height:1.5;padding:10px;background:#fafafa;border-radius:8px">
-      扫码自动填入姓名（仍需输入密码），请向管理员索取您的专属链接。
+      通过专属链接进入可自动填入姓名（仍需输入密码），请向管理员索取您的专属链接。
     </div>
   </div>
 </div>
 
-<!-- ADMIN LOGIN MODAL -->
-<div id="admin-login-modal">
-  <div class="admin-modal-box">
-    <div style="font-size:32px;margin-bottom:8px">🔐</div>
-    <div style="color:#C9A962;font-size:16px;font-weight:600;margin-bottom:16px">管理员登录</div>
-    <input type="password" id="admin-pwd-input" class="login-input" placeholder="请输入管理员密码" style="margin-bottom:12px">
-    <div id="admin-login-error" style="color:#e74c3c;font-size:12px;text-align:center;display:none;margin-bottom:8px"></div>
-    <button class="login-submit" id="admin-login-btn" style="margin-bottom:10px">登录</button>
-    <button id="admin-login-cancel" style="width:100%;padding:12px;background:#f0f0f0;border:1px solid #e5e5e5;border-radius:12px;color:#888;font-size:14px;cursor:pointer">取消</button>
+<!-- REGISTER MODAL -->
+<div id="register-modal" style="display:none;position:fixed;inset:0;z-index:99998;align-items:center;justify-content:center;padding:20px;">
+  <div class="admin-modal-box" style="background:#fff;border:1px solid var(--gold);border-radius:16px;padding:28px 24px;width:100%;max-width:340px;text-align:center;">
+    <div style="font-size:32px;margin-bottom:8px">📝</div>
+    <div style="color:#C9A962;font-size:16px;font-weight:600;margin-bottom:4px;">申请注册账号</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">提交后需经理审批方可登录</div>
+    <input type="text" id="reg-name" class="login-input" placeholder="请输入姓名" style="margin-bottom:10px">
+    <input type="password" id="reg-pwd" class="login-input" placeholder="请设置密码（至少4位）" style="margin-bottom:10px">
+    <select id="reg-role" class="login-input" style="margin-bottom:10px">
+      <option value="置业顾问">置业顾问</option>
+    </select>
+    <div id="reg-error" style="color:#e74c3c;font-size:12px;text-align:center;display:none;margin-bottom:8px"></div>
+    <button class="login-submit" id="reg-submit-btn" style="margin-bottom:10px">提交申请</button>
+    <button id="reg-cancel-btn" style="width:100%;padding:12px;background:#f0f0f0;border:1px solid #e5e5e5;border-radius:12px;color:#888;font-size:14px;cursor:pointer">取消</button>
   </div>
 </div>
 
@@ -1025,11 +1026,11 @@ function renderWorkbench() {
     return { stage: s, count: customers.filter(function(c) { return c.salesStage === s.key; }).length };
   });
   var funnelMax = Math.max.apply(null, funnelData.map(function(d) { return d.count; })) || 1;
-  var funnelHtml = '<div class="funnel"><div class="funnel-title">📊 销售漏斗</div>';
+  var funnelHtml = '<div class="funnel"><div class="funnel-title">📊 销售漏斗（点击查看各阶段客户）</div>';
   funnelData.forEach(function(d, i) {
     var pct = Math.round(d.count / funnelMax * 100);
     var rate = i === 0 ? '' : '<span class="funnel-rate">' + (funnelData[i - 1].count > 0 ? Math.round(d.count / funnelData[i - 1].count * 100) : 0) + '%</span>';
-    funnelHtml += '<div class="funnel-row">' +
+    funnelHtml += '<div class="funnel-row" style="cursor:pointer;" onclick="showStatListByFilter(\'' + d.stage.key + '\',\'stage\')">' +
       '<span class="funnel-label">' + d.stage.icon + ' ' + d.stage.key + '</span>' +
       '<div class="funnel-bar-wrap"><div class="funnel-bar" style="width:' + pct + '%;background:' + d.stage.color + ';"></div></div>' +
       '<span class="funnel-num">' + d.count + rate + '</span>' +
@@ -1049,15 +1050,20 @@ function renderWorkbench() {
   var levelD = customers.filter(function(c) { return c.level === 'D'; }).length;
   var newThisWeek = customers.filter(function(c) { return c.createdAt && daysBetween(todayStr, c.createdAt.slice(0, 10)) <= 7; }).length;
 
+  var pendingFollowUp = customers.filter(function(c) {
+    if (!c.followUpDate) return false;
+    var d = daysBetween(c.followUpDate, todayStr);
+    return d >= 0 && d <= 3;
+  });
   var html = funnelHtml + '<div class="stats-grid">' +
-    '<div class="stat-card stat-clickable" onclick="showStatList(customers.length,\'所有\')"><div class="stat-num">' + customers.length + '</div><div class="stat-label">我的客户总数</div><div class="stat-tap">点击查看</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(customers.length,\'所有\')"><div class="stat-num">' + customers.length + '</div><div class="stat-label">客户总数</div><div class="stat-tap">点击查看全部</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(newThisWeek,\'本周新增\')"><div class="stat-num" style="color:var(--green)">' + newThisWeek + '</div><div class="stat-label">本周新增</div><div class="stat-tap">点击查看</div></div> ' +
     '<div class="stat-card stat-clickable" onclick="showStatList(overdue.length,\'逾期\')"><div class="stat-num" style="color:' + (overdue.length > 0 ? 'var(--red)' : 'var(--green)') + '">' + overdue.length + '</div><div class="stat-label">逾期未跟进</div><div class="stat-tap">点击查看</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(pendingFollowUp.length,\'待跟进\')"><div class="stat-num" style="color:' + (pendingFollowUp.length > 0 ? 'var(--yellow)' : 'var(--text-dim)') + '">' + pendingFollowUp.length + '</div><div class="stat-label">待跟进</div><div class="stat-tap">点击查看</div></div> ' +
     '<div class="stat-card stat-clickable" onclick="showStatList(levelA,\'A级\')"><div class="stat-num" style="color:var(--gold)">' + levelA + '</div><div class="stat-label">A级客户</div><div class="stat-tap">点击查看</div></div> ' +
     '<div class="stat-card stat-clickable" onclick="showStatList(levelB,\'B级\')"><div class="stat-num" style="color:var(--blue)">' + levelB + '</div><div class="stat-label">B级客户</div><div class="stat-tap">点击查看</div></div> ' +
     '<div class="stat-card stat-clickable" onclick="showStatList(levelC,\'C级\')"><div class="stat-num" style="color:var(--gray)">' + levelC + '</div><div class="stat-label">C级客户</div><div class="stat-tap">点击查看</div></div> ' +
     '<div class="stat-card stat-clickable" onclick="showStatList(levelD,\'D级\')"><div class="stat-num" style="color:var(--orange)">' + levelD + '</div><div class="stat-label">D级客户</div><div class="stat-tap">点击查看</div></div> ' +
-    '<div class="stat-card stat-clickable" onclick="showStatList(newThisWeek,\'本周新增\')"><div class="stat-num" style="color:var(--green)">' + newThisWeek + '</div><div class="stat-label">本周新增</div><div class="stat-tap">点击查看</div></div> ' +
-    '<div class="stat-card stat-clickable" onclick="showStatList(dueSoon.length,\'3天内待跟进\')"><div class="stat-num" style="color:' + (dueSoon.length > 0 ? 'var(--yellow)' : 'var(--text-dim)') + '">' + dueSoon.length + '</div><div class="stat-label">3天内待跟进</div><div class="stat-tap">点击查看</div></div> ' +
   '</div>';
 
   if (todayFollowups.length > 0) {
@@ -1114,7 +1120,7 @@ function renderSelfStats() {
   var levelColors = { A: '#2ecc71', B: '#3498db', C: '#888', D: '#e67e22' };
   var levelHtml = Object.keys(levelCounts).map(function(lv) {
     var cnt = levelCounts[lv];
-    return '<div class="bar-row"><span class="bar-label" style="color:' + levelColors[lv] + '">' + lv + '级</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(cnt / total * 100) + '%;background:' + levelColors[lv] + '"></div></div><span class="bar-val">' + cnt + '人</span></div>';
+    return '<div class="bar-row" style="cursor:pointer;" onclick="showStatList(' + cnt + ',\'' + lv + '级\')"><span class="bar-label" style="color:' + levelColors[lv] + '">' + lv + '级</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(cnt / total * 100) + '%;background:' + levelColors[lv] + '"></div></div><span class="bar-val">' + cnt + '人</span></div>';
   }).join('');
   var sortedCh = Object.entries(channelCounts).sort(function(a, b) { return b[1] - a[1]; });
   var channelHtml = sortedCh.map(function(e) {
@@ -1166,7 +1172,7 @@ function renderTeamStats() {
     list.forEach(function(c) { if (counts[c.level] !== undefined) counts[c.level]++; });
     var overdueN = list.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; }).length;
     var rateColor = rate >= 30 ? 'var(--green)' : (rate >= 15 ? 'var(--gold)' : 'var(--text-dim)');
-    return '<div class="team-card">' +
+    return '<div class="team-card" style="cursor:pointer;" onclick="showConsultantCustomers(\'' + escHtml(name) + '\')">' +
       '<div class="team-card-head">' +
         '<span class="team-name"> ' + escRaw(name) + '</span>' +
         '<span class="team-rate" style="color:' + rateColor + '">成交率 ' + rate + '%</span>' +
@@ -1342,33 +1348,48 @@ function renderMy() {
     '</div>';
   }
 
+  // Copy my URL
   html += '<div class="qr-box">' +
-    '<div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:8px;">🌟 我的专属二维码</div>' +
-    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">扫码直接进入「' + escRaw(user.name) + '」工作台</div>' +
-    '<canvas id="qr-my" width="180" height="180" style="border-radius:8px;background:#fff;padding:8px;display:block;margin:0 auto;"></canvas>' +
-    '<div style="margin-top:10px;font-size:10px;color:var(--text-dim);word-break:break-all;line-height:1.4;text-align:center;">' + escHtml(selfUrl) + '</div>' +
+    '<div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:8px;">🔗 我的专属链接</div>' +
+    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">将此链接分享给同事，可直接进入「' + escRaw(user.name) + '」工作台</div>' +
+    '<div style="font-size:11px;color:var(--text-dim);word-break:break-all;line-height:1.4;text-align:center;padding:8px;background:var(--card2);border-radius:8px;">' + escHtml(selfUrl) + '</div>' +
     '<button class="qf-btn" id="copy-my-url" style="margin-top:8px;width:100%;">📋 复制专属链接</button>' +
   '</div>';
 
-  // Manager: consultant QR generator
+  // Manager: copy consultant links
   if (user.role === '销售经理') {
-    var adminUrl = baseUrl + '?u=' + encodeURIComponent('程华军');
     html += '<div class="qr-box">' +
-      '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:8px;">👑 管理员专属</div>' +
-      '<canvas id="qr-admin" width="140" height="140" style="border-radius:8px;background:#fff;padding:6px;display:block;margin:0 auto;"></canvas>' +
-      '<div style="font-size:10px;color:var(--text-dim);word-break:break-all;text-align:center;margin-top:6px;">' + escHtml(adminUrl) + '</div>' +
-      '<button class="qf-btn" data-copy="' + escHtml(adminUrl) + '" style="margin-top:6px;width:100%;">📋 复制管理员链接</button>' +
-    '</div>' +
-    '<div class="qr-box">' +
-      '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:8px;">📲 生成顾问二维码</div>' +
-      '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">输入顾问姓名，生成专属二维码和链接</div>' +
+      '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:8px;">📲 顾问专属链接</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">输入顾问姓名，生成专属链接分享给对方</div>' +
       '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
         '<input type="text" id="qr-gen-name" placeholder="输入姓名" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:#1a1a1a;">' +
-        '<button class="qf-btn" id="qr-gen-btn" style="padding:8px 14px;white-space:nowrap;">生成</button>' +
+        '<button class="qf-btn" id="qr-gen-btn" style="padding:8px 14px;white-space:nowrap;">生成链接</button>' +
       '</div>' +
       '<div id="qr-gen-result" style="display:none;"></div>' +
     '</div>';
   }
+
+  // Manager: admin panel button
+  if (user.role === '销售经理') {
+    html += '<div class="action-item" id="act-admin" style="border-color:var(--gold);margin-bottom:8px;">' +
+      '<span class="action-icon">👔</span><span class="action-text" style="color:var(--gold);">管理员后台</span><span class="action-arrow" style="color:var(--gold);">›</span></div>';
+  }
+
+  // Change password for all users
+  html += '<div class="qr-box">' +
+    '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:10px;">🔒 修改密码</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:6px;">' +
+      '<input type="password" id="change-old-pwd" class="login-input" placeholder="当前密码" style="flex:1;padding:9px 12px;font-size:13px">' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:6px;">' +
+      '<input type="password" id="change-new-pwd" class="login-input" placeholder="新密码（至少4位）" style="flex:1;padding:9px 12px;font-size:13px">' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;">' +
+      '<input type="password" id="change-confirm-pwd" class="login-input" placeholder="确认新密码" style="flex:1;padding:9px 12px;font-size:13px">' +
+      '<button class="qf-btn" id="change-pwd-btn" style="padding:9px 16px;white-space:nowrap;">修改</button>' +
+    '</div>' +
+    '<div id="change-pwd-msg" style="font-size:11px;margin-top:6px;display:none;"></div>' +
+  '</div>';
 
   html += '<div class="action-list">' +
     '<div class="action-item" id="act-export"><span class="action-icon">📤</span><span class="action-text">导出客户数据</span><span class="action-arrow">›</span></div>' +
@@ -1384,13 +1405,9 @@ function renderMy() {
   document.getElementById('act-import').onclick = function() { document.getElementById('import-file').click(); };
   document.getElementById('import-file').onchange = importData;
 
-  // QR codes
-  setTimeout(function() {
-    var c1 = document.getElementById('qr-my');
-    if (c1) generateQRCode(c1, selfUrl);
-    var adminCanvas = document.getElementById('qr-admin');
-    if (adminCanvas) generateQRCode(adminCanvas, adminUrl);
-  }, 100);
+  // Admin panel button
+  var adminBtn = document.getElementById('act-admin');
+  if (adminBtn) adminBtn.onclick = function() { showAdminPanel(); };
 
   // Copy URL
   var copyBtn = document.getElementById('copy-my-url');
@@ -1400,17 +1417,7 @@ function renderMy() {
     } else { fallbackCopy(selfUrl); }
   };
 
-  // Copy admin URL buttons
-  document.querySelectorAll('.qf-btn[data-copy]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var t = btn.getAttribute('data-copy');
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(t).then(function() { toast('已复制链接', 'success'); });
-      } else { fallbackCopy(t); }
-    });
-  });
-
-  // QR generator
+  // Link generator for manager
   var genBtn = document.getElementById('qr-gen-btn');
   if (genBtn) genBtn.onclick = function() {
     var nameInput = document.getElementById('qr-gen-name');
@@ -1424,19 +1431,12 @@ function renderMy() {
     if (acc.disabled) { resultDiv.innerHTML = '<div style="color:var(--red);font-size:12px;">' + escHtml(name) + ' 已禁用</div>'; resultDiv.style.display = 'block'; return; }
     var url = baseUrl + '?u=' + encodeURIComponent(name);
     resultDiv.innerHTML =
-      '<div style="display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;background:#fff;margin-top:6px;">' +
-        '<canvas id="qr-gen-canvas" width="90" height="90" style="border-radius:4px;background:#fff;padding:4px;flex-shrink:0;"></canvas>' +
-        '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;color:#1a1a1a;">' + escRaw(name) + '</div>' +
-        '<div style="font-size:11px;color:var(--text-dim);margin:2px 0;">' + escHtml(acc.role) + '</div>' +
-        '<div style="font-size:10px;color:var(--text-dim);word-break:break-all;line-height:1.3;">' + escHtml(url) + '</div></div>' +
+      '<div style="padding:10px;border:1px solid var(--border);border-radius:8px;background:#fff;margin-top:6px;">' +
+        '<div style="font-size:13px;font-weight:600;color:#1a1a1a;">' + escRaw(name) + ' <span style="font-size:11px;color:var(--text-dim);">' + escHtml(acc.role) + '</span></div>' +
+        '<div style="font-size:10px;color:var(--text-dim);word-break:break-all;line-height:1.3;margin-top:4px;">' + escHtml(url) + '</div>' +
       '</div>' +
       '<button class="qf-btn qr-gen-copy-btn" data-copy="' + escHtml(url) + '" style="margin-top:8px;width:100%;">📋 复制 ' + escHtml(name) + ' 专属链接</button>';
     resultDiv.style.display = 'block';
-    setTimeout(function() {
-      var c = document.getElementById('qr-gen-canvas');
-      if (c) generateQRCode(c, url);
-    }, 200);
-    // Event for copy button
     setTimeout(function() {
       var cpBtn = resultDiv.querySelector('.qr-gen-copy-btn');
       if (cpBtn) cpBtn.onclick = function() {
@@ -1445,7 +1445,7 @@ function renderMy() {
           navigator.clipboard.writeText(t).then(function() { toast('已复制 ' + name + ' 专属链接', 'success'); });
         } else { fallbackCopy(t); }
       };
-    }, 300);
+    }, 100);
   };
 
   // Save settings
@@ -1459,65 +1459,33 @@ function renderMy() {
       toast('已保存：' + (v > 0 ? v + '天未跟进自动入公海池' : '已关闭自动回收'), 'success');
     };
   }
+
+  // Change password
+  var chgBtn = document.getElementById('change-pwd-btn');
+  if (chgBtn) chgBtn.onclick = function() {
+    var oldPwd = (document.getElementById('change-old-pwd').value || '').trim();
+    var newPwd = (document.getElementById('change-new-pwd').value || '').trim();
+    var confirmPwd = (document.getElementById('change-confirm-pwd').value || '').trim();
+    var msgEl = document.getElementById('change-pwd-msg');
+    if (!oldPwd) { if (msgEl) { msgEl.textContent = '请输入当前密码'; msgEl.style.color = '#e74c3c'; msgEl.style.display = 'block'; } return; }
+    if (!newPwd) { if (msgEl) { msgEl.textContent = '请输入新密码'; msgEl.style.color = '#e74c3c'; msgEl.style.display = 'block'; } return; }
+    if (newPwd.length < 4) { if (msgEl) { msgEl.textContent = '新密码至少4位'; msgEl.style.color = '#e74c3c'; msgEl.style.display = 'block'; } return; }
+    if (newPwd !== confirmPwd) { if (msgEl) { msgEl.textContent = '两次输入的新密码不一致'; msgEl.style.color = '#e74c3c'; msgEl.style.display = 'block'; } return; }
+    var acc = DEMO_ACCOUNTS[user.name];
+    if (!acc) { toast('账号信息异常', 'error'); return; }
+    if (acc.pwd !== oldPwd) { if (msgEl) { msgEl.textContent = '当前密码错误'; msgEl.style.color = '#e74c3c'; msgEl.style.display = 'block'; } return; }
+    acc.pwd = newPwd;
+    saveDB();
+    document.getElementById('change-old-pwd').value = '';
+    document.getElementById('change-new-pwd').value = '';
+    document.getElementById('change-confirm-pwd').value = '';
+    if (msgEl) { msgEl.textContent = '密码修改成功！'; msgEl.style.color = '#2ecc71'; msgEl.style.display = 'block'; }
+    toast('密码已修改', 'success');
+  };
 }
 
 // ============================================================
-// 6. QR CODE (CDN with queue)
-// ============================================================
-var _qrQueue = [];
-var _qrLoading = false;
-function generateQRCode(canvas, text) {
-  var size = canvas.width || 200;
-  var ctx = canvas.getContext('2d');
-
-  function drawPlaceholder() {
-    canvas.width = size; canvas.height = size;
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
-    ctx.fillStyle = '#C9A962'; ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText('加载中...', size / 2, size / 2 - 5);
-    ctx.fillStyle = '#888'; ctx.font = '10px monospace';
-    ctx.fillText('扫码访问', size / 2, size / 2 + 15);
-  }
-
-  function drawQR() {
-    try {
-      if (typeof qrcode === 'undefined') { drawPlaceholder(); return; }
-      var typeNumber = text.length > 25 ? 6 : 4;
-      var qr = qrcode(typeNumber, 'M');
-      qr.addData(text); qr.make();
-      var modSize = Math.floor(size / qr.getModuleCount());
-      var off = Math.floor((size - modSize * qr.getModuleCount()) / 2);
-      canvas.width = size; canvas.height = size;
-      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
-      ctx.fillStyle = '#111';
-      for (var r = 0; r < qr.getModuleCount(); r++) {
-        for (var c = 0; c < qr.getModuleCount(); c++) {
-          if (qr.isDark(r, c)) ctx.fillRect(off + c * modSize, off + r * modSize, modSize, modSize);
-        }
-      }
-    } catch(e) { drawPlaceholder(); }
-  }
-
-  if (typeof qrcode !== 'undefined') { drawQR(); return; }
-
-  _qrQueue.push({ canvas: canvas, text: text });
-  drawPlaceholder();
-
-  if (!_qrLoading) {
-    _qrLoading = true;
-    var script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
-    script.onload = function() {
-      var q = _qrQueue; _qrQueue = [];
-      q.forEach(function(item) { generateQRCode(item.canvas, item.text); });
-    };
-    script.onerror = function() { _qrQueue = []; _qrLoading = false; };
-    document.head.appendChild(script);
-  }
-}
-
-// ============================================================
-// 7. EXPORT / IMPORT
+// 6. EXPORT / IMPORT
 // ============================================================
 function exportData() {
   var dataStr = JSON.stringify(DB, null, 2);
@@ -2064,19 +2032,44 @@ function navigateTo(tab) {
 // ============================================================
 // 12. WORKBENCH STAT LIST OVERLAY
 // ============================================================
+function showConsultantCustomers(name) {
+  var todayStr = today();
+  var customers = DB.customers.filter(function(c) { return c.consultant === name && !c.inPool; });
+  if (customers.length === 0) { toast(name + '暂无客户', 'info'); return; }
+  renderStatListOverlay(customers, name + ' · 客户');
+}
+
+function showStatListByFilter(val, type) {
+  var todayStr = today();
+  var myCs = getMyCustomers();
+  var filtered = [];
+  if (type === 'stage') {
+    filtered = myCs.filter(function(c) { return (c.salesStage || '问询') === val; });
+  }
+  if (filtered.length === 0) { toast('无符合「' + val + '」的客户', 'info'); return; }
+  renderStatListOverlay(filtered, val + '阶段');
+}
+
 function showStatList(shown, label) {
   if (shown === 0) { toast('无符合条件的客户', 'info'); return; }
   var todayStr = today();
   var myCs = getMyCustomers();
+  if (DB.currentUser && DB.currentUser.role === '销售经理') {
+    myCs = DB.customers.filter(function(c) { return !c.inPool; });
+  }
   var filtered = [];
   if (label === '所有') filtered = myCs;
   else if (label === '逾期') filtered = myCs.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; });
+  else if (label === '待跟进') filtered = myCs.filter(function(c) { if (!c.followUpDate) return false; var d = daysBetween(c.followUpDate, todayStr); return d >= 0 && d <= 3; });
   else if (label === 'A级') filtered = myCs.filter(function(c) { return c.level === 'A'; });
   else if (label === 'B级') filtered = myCs.filter(function(c) { return c.level === 'B'; });
   else if (label === 'C级') filtered = myCs.filter(function(c) { return c.level === 'C'; });
   else if (label === 'D级') filtered = myCs.filter(function(c) { return c.level === 'D'; });
   else if (label === '本周新增') filtered = myCs.filter(function(c) { return c.createdAt && daysBetween(todayStr, c.createdAt.slice(0, 10)) <= 7; });
-  else if (label === '3天内待跟进') filtered = myCs.filter(function(c) { if (!c.followUpDate) return false; var d = daysBetween(c.followUpDate, todayStr); return d >= 0 && d <= 3; });
+  renderStatListOverlay(filtered, label);
+}
+
+function renderStatListOverlay(filtered, label) {
 
   var stageTag = function(s) {
     var m = { '问询': '问', '来访': '访', '认筹': '筹', '认购': '购', '签约': '签' };
@@ -2146,17 +2139,6 @@ function showAdminPanel() {
   html += '</div>';
   html += '<div id="consultant-list" style="max-height:300px;overflow-y:auto;"></div>';
 
-  // QR modal
-  html += '<div id="qr-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">';
-  html += '<div style="background:#fff;border-radius:16px;padding:24px;text-align:center;max-width:300px;width:90%;">';
-  html += '<div id="qr-modal-name" style="font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:12px;"></div>';
-  html += '<canvas id="qr-modal-canvas" width="200" height="200" style="border-radius:8px;background:#fff;padding:8px;display:block;margin:0 auto;"></canvas>';
-  html += '<div id="qr-modal-url" style="font-size:10px;color:#888;word-break:break-all;margin-top:10px;line-height:1.4;"></div>';
-  html += '<button onclick="downloadQR()" style="margin-top:12px;background:#C9A962;border:none;color:#111;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;width:100%">📥 保存二维码图片</button>';
-  html += '<button onclick="copyConsultantUrl()" style="margin-top:8px;background:#f8f8f8;border:1px solid #e5e5e5;color:#666;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;width:100%">📋 复制专属链接</button>';
-  html += '<button onclick="closeQRModal()" style="margin-top:8px;background:none;border:none;color:#999;font-size:13px;cursor:pointer">关闭</button>';
-  html += '</div></div>';
-
   // Pending approvals
   html += '<div style="color:#C9A962;font-size:13px;font-weight:600;margin:16px 0 8px;">⏳ 待审批（' + pending.length + '）</div>';
   if (pending.length === 0) {
@@ -2188,8 +2170,8 @@ function showAdminPanel() {
   // Settings
   html += '<div style="color:#C9A962;font-size:13px;font-weight:600;margin:16px 0 8px;">⚙️ 安全设置</div>';
   html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
-  html += '<input type="password" id="new-admin-code" class="login-input" placeholder="新管理员密码（留空不修改）" style="flex:1;padding:10px 12px;font-size:13px">';
-  html += '<button onclick="changeAdminCode()" style="background:#C9A962;border:none;color:#111;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">保存</button>';
+  html += '<input type="password" id="new-manager-pwd" class="login-input" placeholder="修改经理登录密码" style="flex:1;padding:10px 12px;font-size:13px">';
+  html += '<button onclick="changeManagerPwd()" style="background:#C9A962;border:none;color:#111;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">保存</button>';
   html += '</div>';
   html += '<div style="display:flex;gap:10px;margin-top:6px">';
   html += '<button onclick="exportCustomerSummary()" style="flex:1;background:#C9A962;border:none;color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">📊 导出梳理表</button>';
@@ -2214,10 +2196,15 @@ function closeAdminPanel() {
 }
 
 // === Consultant Management ===
-var _currentConsultantUrl = '';
-var _currentConsultantName = '';
-
 function genPwd() { return Math.random().toString(36).slice(2, 8); }
+
+function copyConsultantLink(name) {
+  var baseUrl = location.origin + location.pathname;
+  var url = baseUrl + '?u=' + encodeURIComponent(name);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function() { toast('已复制「' + name + '」专属链接', 'success'); });
+  } else { fallbackCopy(url); }
+}
 
 function renderConsultantList() {
   var list = document.getElementById('consultant-list');
@@ -2234,7 +2221,7 @@ function renderConsultantList() {
       '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;">' + escHtml(name) + (acc.disabled ? ' <span style="color:#e74c3c;font-size:11px;">[已禁用]</span>' : '') + '</div>' +
       '<div style="font-size:11px;color:#666;">密码: ' + escHtml(acc.pwd) + '</div></div>' +
       '<div style="display:flex;gap:5px;flex-shrink:0;">' +
-        '<button onclick="openConsultantQR(\'' + escHtml(name) + '\')" style="background:#C9A962;border:none;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📱</button>' +
+        '<button onclick="copyConsultantLink(\'' + escHtml(name) + '\')" style="background:#C9A962;border:none;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">🔗</button>' +
         '<button onclick="toggleAccount(\'' + escHtml(name) + '\')" style="background:#e8e8e8;border:none;color:#666;font-size:12px;padding:5px 8px;border-radius:4px;cursor:pointer;">' + (acc.disabled ? '启用' : '禁用') + '</button>' +
         '<button onclick="removeConsultant(\'' + escHtml(name) + '\')" style="background:#f5f5f5;border:none;color:#e74c3c;font-size:12px;padding:5px 8px;border-radius:4px;cursor:pointer;">删</button>' +
       '</div></div>';
@@ -2266,50 +2253,18 @@ function removeConsultant(name) {
   renderConsultantList();
 }
 
-function openConsultantQR(name) {
-  _currentConsultantName = name;
-  var baseUrl = location.origin + location.pathname;
-  _currentConsultantUrl = baseUrl + '?u=' + encodeURIComponent(name);
-  var modal = document.getElementById('qr-modal');
-  var nameEl = document.getElementById('qr-modal-name');
-  var urlEl = document.getElementById('qr-modal-url');
-  var canvas = document.getElementById('qr-modal-canvas');
-  if (nameEl) nameEl.textContent = '👤 ' + name + ' · 专属二维码';
-  if (urlEl) urlEl.textContent = _currentConsultantUrl;
-  if (modal) modal.style.display = 'flex';
-  setTimeout(function() { if (canvas) generateQRCode(canvas, _currentConsultantUrl); }, 100);
-}
-
-function closeQRModal() {
-  var m = document.getElementById('qr-modal');
-  if (m) m.style.display = 'none';
-}
-
-function downloadQR() {
-  var canvas = document.getElementById('qr-modal-canvas');
-  if (!canvas) return;
-  var link = document.createElement('a');
-  link.download = 'yuchen_qr_' + _currentConsultantName + '.png';
-  link.href = canvas.toDataURL('image/png');
-  link.click();
-  toast('二维码已下载', 'success');
-}
-
-function copyConsultantUrl() {
-  var url = _currentConsultantUrl;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(url).then(function() { toast('链接已复制，可发给「' + _currentConsultantName + '」', 'success'); });
-  } else { fallbackCopy(url); }
-}
-
 function approveUser(idx) {
   var p = (DB.pendingUsers || [])[idx];
   if (!p) return;
   if (!DB.approvedUsers) DB.approvedUsers = [];
   DB.approvedUsers.push({ name: p.name, role: p.role, approvedAt: new Date().toISOString().slice(0, 10), approvedBy: '程华军' });
+  // Add to accounts with the password they submitted
+  if (!DEMO_ACCOUNTS[p.name]) {
+    DEMO_ACCOUNTS[p.name] = { role: p.role || '置业顾问', pwd: p.pwd || genPwd() };
+  }
   DB.pendingUsers.splice(idx, 1);
   saveDB();
-  toast('已批准 ' + p.name, 'success');
+  toast('已批准 ' + p.name + '，密码：' + (p.pwd || '已自动生成'), 'success');
   showAdminPanel();
 }
 
@@ -2339,14 +2294,14 @@ function revokeUser(idx) {
   showAdminPanel();
 }
 
-function changeAdminCode() {
-  var newCode = (document.getElementById('new-admin-code') || {}).value || '';
-  if (!newCode) { toast('未输入新密码', 'error'); return; }
-  if (newCode.length < 4) { toast('密码至少4位', 'error'); return; }
-  ADMIN_CODE = newCode;
-  document.getElementById('new-admin-code').value = '';
+function changeManagerPwd() {
+  var newPwd = (document.getElementById('new-manager-pwd') || {}).value || '';
+  if (!newPwd) { toast('请输入新密码', 'error'); return; }
+  if (newPwd.length < 4) { toast('密码至少4位', 'error'); return; }
+  DEMO_ACCOUNTS['程华军'] = { role: '销售经理', pwd: newPwd };
+  document.getElementById('new-manager-pwd').value = '';
   saveDB();
-  toast('管理员密码已更新为：' + newCode, 'success');
+  toast('经理密码已更新', 'success');
 }
 
 function toggleAccount(name) {
@@ -2425,6 +2380,9 @@ function renderAll() {
 // ============================================================
 // 14. LOGIN
 // ============================================================
+var _loginAttempts = 0;
+var _loginLockUntil = 0;
+
 function doLogin(name, role) {
   name = (name || '').trim();
   var pwd = (document.getElementById('login-pwd') || { value: '' }).value;
@@ -2432,39 +2390,61 @@ function doLogin(name, role) {
   if (err) err.style.display = 'none';
   if (!name) { toast('请输入姓名', 'error'); return; }
 
-  // Sales manager login: password field doubles as admin code
+  // Rate limiting: max 5 attempts, then 30s lockout
+  var now = Date.now();
+  if (_loginLockUntil > now) {
+    var remain = Math.ceil((_loginLockUntil - now) / 1000);
+    if (err) { err.textContent = '登录次数过多，请 ' + remain + ' 秒后重试'; err.style.display = 'block'; }
+    return;
+  }
+  if (_loginAttempts >= 5) {
+    _loginLockUntil = now + 30000;
+    if (err) { err.textContent = '登录次数过多，请30秒后重试'; err.style.display = 'block'; }
+    return;
+  }
+
+  function loginFailed(msg) {
+    _loginAttempts++;
+    if (err) { err.textContent = msg || '登录失败'; err.style.display = 'block'; }
+    if (_loginAttempts >= 5) {
+      _loginLockUntil = Date.now() + 30000;
+      if (err) { err.textContent = '登录次数过多，请30秒后重试'; err.style.display = 'block'; }
+    }
+  }
+
+  // Sales manager login: manager IS admin, has all powers
   if (name === '程华军' && role === '销售经理') {
-    var isAdmin = (pwd === ADMIN_CODE);
     var acc = DEMO_ACCOUNTS['程华军'];
-    if (pwd !== ADMIN_CODE && (!acc || acc.pwd !== pwd)) {
-      if (err) { err.textContent = '密码错误（管理员验证码或账号密码）'; err.style.display = 'block'; }
+    if (!acc || acc.pwd !== pwd) {
+      loginFailed('密码错误');
       return;
     }
-    DB.currentUser = { name: '程华军', role: '销售经理', isAdmin: isAdmin };
+    _loginAttempts = 0;
+    DB.currentUser = { name: '程华军', role: '销售经理', isAdmin: true };
     if (!DB.approvedUsers) DB.approvedUsers = [];
     saveDB();
     closeLoginScreen();
     refreshNavForRole();
     enterApp();
-    showAdminPanel(); // Always show admin panel for 程华军
     return;
   }
 
   // Regular account validation
   var account = DEMO_ACCOUNTS[name];
   if (!account) {
-    if (err) { err.textContent = '姓名不在白名单内，请联系管理员'; err.style.display = 'block'; }
+    loginFailed('姓名不在白名单内，请联系管理员');
     return;
   }
   if (account.role !== role) {
-    if (err) { err.textContent = '角色与账号不匹配'; err.style.display = 'block'; }
+    loginFailed('角色与账号不匹配');
     return;
   }
-  if (account.disabled) { toast('该账号已被管理员禁用', 'error'); return; }
+  if (account.disabled) { loginFailed('该账号已被管理员禁用'); return; }
   if (account.pwd !== pwd) {
-    if (err) { err.textContent = '密码错误'; err.style.display = 'block'; }
+    loginFailed('密码错误');
     return;
   }
+  _loginAttempts = 0;
   if (err) err.style.display = 'none';
   DB.currentUser = { name: name, role: role };
   if (!DB.approvedUsers) DB.approvedUsers = [];
@@ -2473,33 +2453,6 @@ function doLogin(name, role) {
   refreshNavForRole();
   enterApp();
   toast('欢迎回来，' + name, 'success');
-}
-
-function showAdminLogin() {
-  document.getElementById('admin-login-modal').style.display = 'flex';
-  setTimeout(function() { var i = document.getElementById('admin-pwd-input'); if (i) i.focus(); }, 80);
-}
-function closeAdminLogin() {
-  document.getElementById('admin-login-modal').style.display = 'none';
-  document.getElementById('admin-pwd-input').value = '';
-  document.getElementById('admin-login-error').style.display = 'none';
-}
-function doAdminLogin() {
-  var pwd = (document.getElementById('admin-pwd-input') || { value: '' }).value;
-  var errEl = document.getElementById('admin-login-error');
-  if (pwd !== ADMIN_CODE) {
-    if (errEl) { errEl.textContent = '密码错误'; errEl.style.display = 'block'; }
-    return;
-  }
-  closeAdminLogin();
-  DB.currentUser = { name: '程华军', role: '销售经理', isAdmin: true };
-  if (!DB.approvedUsers) DB.approvedUsers = [];
-  saveDB();
-  closeLoginScreen();
-  refreshNavForRole();
-  enterApp();
-  toast('管理员身份已激活', 'success');
-  setTimeout(function() { showAdminPanel(); }, 400);
 }
 
 function closeLoginScreen() {
@@ -2515,6 +2468,36 @@ function refreshNavForRole() {
 }
 
 function enterApp() { showTab('workbench'); }
+
+function showRegisterForm() {
+  document.getElementById('register-modal').style.display = 'flex';
+  document.getElementById('reg-name').value = '';
+  document.getElementById('reg-pwd').value = '';
+  document.getElementById('reg-error').style.display = 'none';
+  setTimeout(function() { document.getElementById('reg-name').focus(); }, 100);
+}
+
+function closeRegisterForm() {
+  document.getElementById('register-modal').style.display = 'none';
+}
+
+function submitRegister() {
+  var name = (document.getElementById('reg-name').value || '').trim();
+  var pwd = (document.getElementById('reg-pwd').value || '').trim();
+  var role = document.getElementById('reg-role').value;
+  var errEl = document.getElementById('reg-error');
+  if (!name) { if (errEl) { errEl.textContent = '请输入姓名'; errEl.style.display = 'block'; } return; }
+  if (name.length < 2) { if (errEl) { errEl.textContent = '姓名至少2个字符'; errEl.style.display = 'block'; } return; }
+  if (!pwd || pwd.length < 4) { if (errEl) { errEl.textContent = '密码至少4位'; errEl.style.display = 'block'; } return; }
+  if (DEMO_ACCOUNTS[name]) { if (errEl) { errEl.textContent = '该姓名已注册，请直接登录'; errEl.style.display = 'block'; } return; }
+  if (!DB.pendingUsers) DB.pendingUsers = [];
+  var alreadyPending = DB.pendingUsers.find(function(p) { return p.name === name; });
+  if (alreadyPending) { if (errEl) { errEl.textContent = '您已提交过申请，请等待经理审批'; errEl.style.display = 'block'; } return; }
+  DB.pendingUsers.push({ name: name, role: role, pwd: pwd, appliedAt: new Date().toISOString().slice(0, 10) });
+  saveDB();
+  closeRegisterForm();
+  toast('申请已提交，请等待经理审批', 'success');
+}
 
 function doLogout() {
   confirmDlg('退出登录', '确定退出当前账号吗？', function() {
@@ -2538,10 +2521,11 @@ function doLogout() {
 function init() {
   loadDB();
 
-  // QR code scan prefill
+  // URL param prefill
   var autoName = (function() {
     var m = location.search.match(/[?&]u=([^&]+)/);
-    return m ? decodeURIComponent(m[1]) : '';
+    var raw = m ? decodeURIComponent(m[1]) : '';
+    return raw.replace(/[<>"'&\\\/]/g, '').slice(0, 50);
   })();
   if (autoName) {
     var account = DEMO_ACCOUNTS[autoName];
@@ -2556,7 +2540,7 @@ function init() {
       var pwdEl = document.getElementById('login-pwd');
       if (pwdEl) { pwdEl.focus(); pwdEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     }, 200);
-    if (!DEMO_ACCOUNTS[autoName]) toast('未识别账号「' + autoName + '」，请确认后重新扫码', 'error');
+    if (!DEMO_ACCOUNTS[autoName]) toast('未识别账号「' + autoName + '」，请确认链接是否正确', 'error');
   }
 
   if (DB.currentUser) {
@@ -2589,11 +2573,11 @@ function init() {
     }
   });
 
-  document.getElementById('admin-login-link').onclick = showAdminLogin;
-  document.getElementById('admin-login-btn').onclick = doAdminLogin;
-  document.getElementById('admin-login-cancel').onclick = closeAdminLogin;
-  document.getElementById('admin-pwd-input').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') doAdminLogin();
+  document.getElementById('register-link').onclick = showRegisterForm;
+  document.getElementById('reg-submit-btn').onclick = submitRegister;
+  document.getElementById('reg-cancel-btn').onclick = closeRegisterForm;
+  document.getElementById('reg-pwd').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitRegister();
   });
 
   document.querySelectorAll('.nav-item').forEach(function(item) {
