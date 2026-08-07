@@ -315,11 +315,7 @@ body { display: flex; flex-direction: column; }
       <button class="role-btn" data-role="销售经理">销售经理</button>
     </div>
     <div style="position:relative;">
-      <input type="text" id="login-name" class="login-input" placeholder="请输入姓名" autocomplete="off" list="cn-list">
-      <datalist id="cn-list">
-        <option value="崔妮"><option value="黄志聪"><option value="赵明">
-        <option value="毛雨文江华"><option value="蒋英"><option value="程华军">
-      </datalist>
+      <input type="text" id="login-name" class="login-input" placeholder="请输入姓名" autocomplete="off">
     </div>
     <input type="password" id="login-pwd" class="login-input" placeholder="请输入密码" autocomplete="off">
     <div id="login-error" style="color:#e74c3c;font-size:12px;text-align:center;display:none;margin-top:-8px"></div>
@@ -1141,33 +1137,56 @@ function renderSelfStats() {
   var levelColors = { A: '#2ecc71', B: '#3498db', C: '#888', D: '#e67e22' };
   var levelHtml = Object.keys(levelCounts).map(function(lv) {
     var cnt = levelCounts[lv];
-    return '<div class="bar-row" style="cursor:pointer;" onclick="showStatList(' + cnt + ',\'' + lv + '级\')"><span class="bar-label" style="color:' + levelColors[lv] + '">' + lv + '级</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(cnt / total * 100) + '%;background:' + levelColors[lv] + '"></div></div><span class="bar-val">' + cnt + '人</span></div>';
+    return '<div class="bar-row bar-clickable" style="cursor:pointer;" data-stat-bar="level" data-stat-val="' + lv + '级"><span class="bar-label" style="color:' + levelColors[lv] + '">' + lv + '级</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(cnt / total * 100) + '%;background:' + levelColors[lv] + '"></div></div><span class="bar-val">' + cnt + '人</span></div>';
   }).join('');
   var sortedCh = Object.entries(channelCounts).sort(function(a, b) { return b[1] - a[1]; });
   var channelHtml = sortedCh.map(function(e) {
-    return '<div class="bar-row"><span class="bar-label">' + escRaw(e[0]) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(e[1] / total * 100) + '%;background:var(--gold)"></div></div><span class="bar-val">' + e[1] + '人</span></div>';
+    return '<div class="bar-row bar-clickable" style="cursor:pointer;" data-stat-bar="channel" data-stat-val="' + escHtml(e[0]) + '"><span class="bar-label">' + escRaw(e[0]) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(e[1] / total * 100) + '%;background:var(--gold)"></div></div><span class="bar-val">' + e[1] + '人</span></div>';
   }).join('');
   var todayStr = today();
   var overdue = customers.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; }).length;
   var following = customers.length - overdue;
   var html = '<div class="chart-title" style="padding:14px 16px 4px;">📊 我的业绩</div>' +
-    '<div class="perf-grid">' +
-      '<div class="perf-card"><div class="n">' + customers.length + '</div><div class="l">来访组数</div></div>' +
-      '<div class="perf-card"><div class="n">' + dealCount + '</div><div class="l">成交(认购+签约)</div></div>' +
-      '<div class="perf-card"><div class="n">' + dealRate + '%</div><div class="l">成交率</div></div>' +
+    '<div class="perf-grid" id="self-perf-grid">' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="all"><div class="n">' + customers.length + '</div><div class="l">来访组数</div><div class="stat-tap">点击查看</div></div>' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="deal"><div class="n">' + dealCount + '</div><div class="l">成交(认购+签约)</div><div class="stat-tap">点击查看</div></div>' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="all"><div class="n">' + dealRate + '%</div><div class="l">成交率</div><div class="stat-tap">点击查看全部</div></div>' +
     '</div>' +
-    '<div class="perf-grid">' +
-      '<div class="perf-card"><div class="n" style="color:var(--green)">' + signedCount + '</div><div class="l">签约</div></div>' +
-      '<div class="perf-card"><div class="n" style="color:var(--orange)">' + (dealCount - signedCount) + '</div><div class="l">认购</div></div>' +
-      '<div class="perf-card"><div class="n" style="color:var(--text)">' + (customers.length - dealCount) + '</div><div class="l">未成交</div></div>' +
+    '<div class="perf-grid" id="self-perf-grid2">' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="signed"><div class="n" style="color:var(--green)">' + signedCount + '</div><div class="l">签约</div><div class="stat-tap">点击查看</div></div>' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="subs"><div class="n" style="color:var(--orange)">' + (dealCount - signedCount) + '</div><div class="l">认购</div><div class="stat-tap">点击查看</div></div>' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="nodeal"><div class="n" style="color:var(--text)">' + (customers.length - dealCount) + '</div><div class="l">未成交</div><div class="stat-tap">点击查看</div></div>' +
     '</div>' +
-    '<div class="chart-box"><div class="chart-title">📊 客户等级分布（共' + total + '人）</div><div class="bar-chart">' + levelHtml + '</div></div>' +
-    '<div class="chart-box"><div class="chart-title">📈 来访渠道分布</div>' + (channelHtml || '<div style="color:var(--text-dim);font-size:13px;">暂无数据</div>') + '</div>' +
-    '<div class="chart-box"><div class="chart-title">📋 跟进状态概览</div><div class="bar-chart">' +
-      '<div class="bar-row"><span class="bar-label" style="color:var(--red)">逾期</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(overdue / total * 100) + '%;background:var(--red)"></div></div><span class="bar-val">' + overdue + '人</span></div>' +
-      '<div class="bar-row"><span class="bar-label" style="color:var(--green)">正常</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(following / total * 100) + '%;background:var(--green)"></div></div><span class="bar-val">' + following + '人</span></div>' +
+    '<div class="chart-box"><div class="chart-title">📊 客户等级分布（共' + total + '人）</div><div class="bar-chart" id="self-level-chart">' + levelHtml + '</div></div>' +
+    '<div class="chart-box"><div class="chart-title">📈 来访渠道分布</div>' + (channelHtml ? '<div class="bar-chart" id="self-channel-chart">' + channelHtml + '</div>' : '<div style="color:var(--text-dim);font-size:13px;">暂无数据</div>') + '</div>' +
+    '<div class="chart-box"><div class="chart-title">📋 跟进状态概览</div><div class="bar-chart" id="self-followup-chart">' +
+      '<div class="bar-row bar-clickable" style="cursor:pointer;" data-stat-bar="overdue"><span class="bar-label" style="color:var(--red)">逾期</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(overdue / total * 100) + '%;background:var(--red)"></div></div><span class="bar-val">' + overdue + '人</span></div>' +
+      '<div class="bar-row bar-clickable" style="cursor:pointer;" data-stat-bar="normal"><span class="bar-label" style="color:var(--green)">正常</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(following / total * 100) + '%;background:var(--green)"></div></div><span class="bar-val">' + following + '人</span></div>' +
     '</div></div>';
   document.getElementById('stats-scroll').innerHTML = html;
+
+  // Event delegation for self perf cards
+  document.getElementById('stats-scroll').querySelectorAll('.perf-clickable').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var s = card.dataset.selfStat;
+      if (s === 'all') showStatList(99, '所有');
+      else if (s === 'deal') showStatList(99, 'deal');
+      else if (s === 'signed') showStatList(99, 'signed');
+      else if (s === 'subs') showStatList(99, 'subs');
+      else if (s === 'nodeal') showStatList(99, 'nodeal');
+    });
+  });
+
+  // Event delegation for bar clicks
+  document.getElementById('stats-scroll').querySelectorAll('.bar-clickable').forEach(function(bar) {
+    bar.addEventListener('click', function() {
+      var barType = bar.dataset.statBar;
+      var barVal = bar.dataset.statVal;
+      if (barType === 'level' || barType === 'channel') showStatList(99, barVal || '');
+      else if (barType === 'overdue') showStatList(99, '逾期');
+      else if (barType === 'normal') showStatList(99, 'normal');
+    });
+  });
 }
 
 function renderTeamStats() {
@@ -1193,7 +1212,7 @@ function renderTeamStats() {
     list.forEach(function(c) { if (counts[c.level] !== undefined) counts[c.level]++; });
     var overdueN = list.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; }).length;
     var rateColor = rate >= 30 ? 'var(--green)' : (rate >= 15 ? 'var(--gold)' : 'var(--text-dim)');
-    return '<div class="team-card" style="cursor:pointer;" onclick="showConsultantCustomers(\'' + escHtml(name) + '\')">' +
+    return '<div class="team-card" style="cursor:pointer;">' +
       '<div class="team-card-head">' +
         '<span class="team-name"> ' + escRaw(name) + '</span>' +
         '<span class="team-rate" style="color:' + rateColor + '">成交率 ' + rate + '%</span>' +
@@ -1216,15 +1235,32 @@ function renderTeamStats() {
     : '';
 
   var html = '<div class="chart-title" style="padding:14px 16px 4px;">📊 团队总览</div>' +
-    '<div class="perf-grid">' +
-      '<div class="perf-card"><div class="n">' + all.length + '</div><div class="l">总来访组数</div></div>' +
-      '<div class="perf-card"><div class="n">' + totalDeal + '</div><div class="l">总成交</div></div>' +
-      '<div class="perf-card"><div class="n">' + totalRate + '%</div><div class="l">整体成交率</div></div>' +
+    '<div class="perf-grid" id="team-perf-grid">' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="all"><div class="n">' + all.length + '</div><div class="l">总来访组数</div><div class="stat-tap">点击查看</div></div>' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="deal"><div class="n">' + totalDeal + '</div><div class="l">总成交</div><div class="stat-tap">点击查看</div></div>' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="all"><div class="n">' + totalRate + '%</div><div class="l">整体成交率</div><div class="stat-tap">点击查看全部</div></div>' +
     '</div>' +
-    '<div class="section-title">👥 每位顾问情况</div>' +
+    '<div class="section-title">👥 每位顾问情况 <span style="font-size:11px;color:var(--text-dim);">点击卡片查看详情</span></div>' +
     (teamHtml || '<div class="pool-empty">暂无客户数据</div>') +
     poolHtml;
   document.getElementById('stats-scroll').innerHTML = html;
+
+  // Event delegation for team perf cards
+  document.getElementById('stats-scroll').querySelectorAll('.perf-clickable').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var s = card.dataset.teamStat;
+      if (s === 'all') showStatList(99, '所有');
+      else if (s === 'deal') showStatList(99, 'deal');
+    });
+  });
+
+  // Event delegation for team consultant cards
+  document.getElementById('stats-scroll').querySelectorAll('.team-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var nameEl = card.querySelector('.team-name');
+      if (nameEl) showConsultantCustomers(nameEl.textContent.trim());
+    });
+  });
 }
 
 // === Analysis (Manager Only) ===
@@ -1399,9 +1435,9 @@ function renderMy() {
     }
     html += '</div>';
 
-    // Admin panel
+    // Consultant account management
     html += '<div class="action-item" id="act-admin" style="border-color:var(--gold);margin-bottom:8px;">' +
-      '<span class="action-icon">👔</span><span class="action-text" style="color:var(--gold);">管理员后台</span><span class="action-arrow" style="color:var(--gold);">›</span></div>';
+      '<span class="action-icon">👔</span><span class="action-text" style="color:var(--gold);">顾问账号管理</span><span class="action-arrow" style="color:var(--gold);">›</span></div>';
   }
 
   // Change password for all users
@@ -1832,7 +1868,7 @@ function openForm(prefill, customer) {
     '</div>' +
     '<div class="form-group"><label class="form-label">置业顾问</label>' +
       '<input type="text" id="f-consultant" class="form-input" value="' + escRaw(consVal) + '" ' + (!isManager ? 'disabled' : '') + ' list="cn-list-form">' +
-      '<datalist id="cn-list-form"><option value="崔妮"><option value="黄志聪"><option value="赵明"><option value="毛雨文江华"><option value="蒋英"></datalist></div>' +
+      '<datalist id="cn-list-form">' + Object.keys(DEMO_ACCOUNTS).filter(function(n) { return n !== '程华军'; }).map(function(n) { return '<option value="' + escHtml(n) + '">'; }).join('') + '</datalist></div>' +
     '<div class="form-group"><label class="form-label">来访渠道</label>' +
       '<select id="f-channel" class="form-select"><option value="">请选择</option>' +
         CHANNELS.map(function(ch) { return '<option value="' + escRaw(ch) + '"' + (customer && customer.channel === ch ? ' selected' : '') + '>' + escRaw(ch) + '</option>'; }).join('') +
@@ -2059,11 +2095,17 @@ function showStatList(shown, label) {
   if (label === '所有') filtered = myCs;
   else if (label === '逾期') filtered = myCs.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; });
   else if (label === '待跟进') filtered = myCs.filter(function(c) { if (!c.followUpDate) return false; var d = daysBetween(c.followUpDate, todayStr); return d >= 0 && d <= 3; });
+  else if (label === '正常') filtered = myCs.filter(function(c) { return !c.followUpDate || daysBetween(c.followUpDate, todayStr) <= 0; });
   else if (label === 'A级') filtered = myCs.filter(function(c) { return c.level === 'A'; });
   else if (label === 'B级') filtered = myCs.filter(function(c) { return c.level === 'B'; });
   else if (label === 'C级') filtered = myCs.filter(function(c) { return c.level === 'C'; });
   else if (label === 'D级') filtered = myCs.filter(function(c) { return c.level === 'D'; });
   else if (label === '本周新增') filtered = myCs.filter(function(c) { return c.createdAt && daysBetween(todayStr, c.createdAt.slice(0, 10)) <= 7; });
+  else if (label === 'deal') filtered = myCs.filter(function(c) { return c.dealStatus === '签约' || c.dealStatus === '认购'; });
+  else if (label === 'signed') filtered = myCs.filter(function(c) { return c.dealStatus === '签约'; });
+  else if (label === 'subs') filtered = myCs.filter(function(c) { return c.dealStatus === '认购'; });
+  else if (label === 'nodeal') filtered = myCs.filter(function(c) { return !c.dealStatus || c.dealStatus === '未成交'; });
+  else filtered = myCs.filter(function(c) { return c.channel === label; });
   if (filtered.length === 0) { toast('无符合条件的客户', 'info'); return; }
   renderStatListOverlay(filtered, label);
 }
@@ -2123,7 +2165,7 @@ function showAdminPanel() {
 
   var html = '<div style="background:#ffffff;border:1px solid #C9A962;border-radius:16px;width:100%;max-width:480px;margin:20px 0 40px;overflow:hidden;">' +
     '<div style="padding:16px 20px;background:linear-gradient(135deg,rgba(201,169,98,0.18),rgba(201,169,98,0.06));border-bottom:1px solid #e5e5e5;display:flex;align-items:center;justify-content:space-between;">' +
-      '<span style="color:#C9A962;font-size:16px;font-weight:600;">👔 管理员后台</span>' +
+      '<span style="color:#C9A962;font-size:16px;font-weight:600;">👔 顾问账号管理</span>' +
       '<span onclick="closeAdminPanel()" style="color:#666;font-size:22px;cursor:pointer;line-height:1;">✕</span>' +
     '</div>' +
     '<div style="padding:16px;">';
