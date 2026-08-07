@@ -1003,10 +1003,6 @@ function daysBetween(d1, d2) {
   return Math.floor((a - b) / 86400000);
 }
 function today() { return fDate(new Date()); }
-function maskPhone(p) {
-  if (!p || p.length < 7) return p || '';
-  return p.slice(0,3) + '****' + p.slice(-4);
-}
 function esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
@@ -1015,6 +1011,11 @@ function escRaw(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+var showToast = toast;
 
 function toast(msg, type) {
   type = type || 'success';
@@ -1037,7 +1038,7 @@ function fallbackCopy(text) {
 
 function confirmDlg(title, body, onOK) {
   document.getElementById('cd-title').textContent = title;
-  document.getElementById('cd-body').textContent = body;
+  document.getElementById('cd-body').innerHTML = body;
   document.getElementById('confirm-dialog').classList.add('show');
   document.getElementById('cd-confirm').onclick = function() {
     document.getElementById('confirm-dialog').classList.remove('show');
@@ -1154,9 +1155,11 @@ function makeDemo() {
   ];
 }
 
-var DB = { version: 3.2, currentUser: null, customers: [], approvedUsers: [], pendingUsers: [] };
+var DB = { version: 3.2, currentUser: null, customers: [], approvedUsers: [], pendingUsers: [], accounts: {}, adminCode: 'yuchen2026' };
 
 function saveDB() {
+  DB.accounts = DEMO_ACCOUNTS;
+  DB.adminCode = ADMIN_CODE;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e){}
 }
 function loadDB() {
@@ -1177,6 +1180,8 @@ function loadDB() {
         if (!c.history) c.history = [];
       });
       if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
+      if (DB.accounts && Object.keys(DB.accounts).length > 0) { DEMO_ACCOUNTS = Object.assign(DEMO_ACCOUNTS, DB.accounts); }
+      if (DB.adminCode) { ADMIN_CODE = DB.adminCode; }
     } else {
       DB.settings = Object.assign({}, DEFAULT_SETTINGS);
       DB.customers = makeDemo();
@@ -1561,14 +1566,14 @@ function renderWorkbench() {
   var newThisWeek = customers.filter(function(c){ return c.createdAt && daysBetween(todayStr, c.createdAt.slice(0,10)) <= 7; }).length;
 
   var html = funnelHtml + '<div class="stats-grid">' +
-'<div class="stat-card stat-clickable" onclick="showStatList(customers.length,\'所有\')"><div class="stat-num">' + customers.length + '></div><div class="stat-label">我的客户总数</div><div class="stat-tap">点击查看 ›</div></div> ' +
+'<div class="stat-card stat-clickable" onclick="showStatList(customers.length,\'所有\')"><div class="stat-num">' + customers.length + '</div><div class="stat-label">我的客户总数</div><div class="stat-tap">点击查看 ›</div></div> ' +
 '<div class="stat-card stat-clickable" onclick="showStatList(overdue.length,\'逾期\')"><div class="stat-num" style="color:' + (overdue.length>0?'var(--red)':'var(--green)') + '">' + overdue.length + '</div><div class="stat-label">逾期未跟进</div><div class="stat-tap">点击查看 ›</div></div> ' +
 '<div class="stat-card stat-clickable" onclick="showStatList(levelA,\'A级\')"><div class="stat-num" style="color:var(--gold)">' + levelA + '</div><div class="stat-label">A级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
-    '<div class="stat-card stat-clickable" onclick="showStatList(levelB,\'B级\')&gt;"><div class="stat-num" style="color:var(--blue)">' + levelB + '</div><div class="stat-label">B级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
-    '<div class="stat-card stat-clickable" onclick="showStatList(levelC,\'C级\')&gt;"><div class="stat-num" style="color:var(--gray)">' + levelC + '</div><div class="stat-label">C级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
-    '<div class="stat-card stat-clickable" onclick="showStatList(levelD,\'D级\')&gt;"><div class="stat-num" style="color:var(--orange)">' + levelD + '</div><div class="stat-label">D级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
-    '<div class="stat-card stat-clickable" onclick="showStatList(newThisWeek,\'本周新增\')&gt;"><div class="stat-num" style="color:var(--green)">' + newThisWeek + '</div><div class="stat-label">本周新增</div><div class="stat-tap">点击查看 ›</div></div> ' +
-    '<div class="stat-card stat-clickable" onclick="showStatList(dueSoon.length,\'3天内待跟进\')&gt;"><div class="stat-num" style="color:' + (dueSoon.length>0?'var(--yellow)':'var(--text-dim)') + '">' + dueSoon.length + '</div><div class="stat-label">3天内待跟进</div><div class="stat-tap">点击查看 ›</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(levelB,\'B级\')'>"><div class="stat-num" style="color:var(--blue)">' + levelB + '</div><div class="stat-label">B级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(levelC,\'C级\')'>"><div class="stat-num" style="color:var(--gray)">' + levelC + '</div><div class="stat-label">C级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(levelD,\'D级\')'>"><div class="stat-num" style="color:var(--orange)">' + levelD + '</div><div class="stat-label">D级客户</div><div class="stat-tap">点击查看 ›</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(newThisWeek,\'本周新增\')'>"><div class="stat-num" style="color:var(--green)">' + newThisWeek + '</div><div class="stat-label">本周新增</div><div class="stat-tap">点击查看 ›</div></div> ' +
+    '<div class="stat-card stat-clickable" onclick="showStatList(dueSoon.length,\'3天内待跟进\')'>"><div class="stat-num" style="color:' + (dueSoon.length>0?'var(--yellow)':'var(--text-dim)') + '">' + dueSoon.length + '</div><div class="stat-label">3天内待跟进</div><div class="stat-tap">点击查看 ›</div></div> ' +
   '</div>';
 
   if (todayFollowups.length > 0) {
@@ -2036,51 +2041,77 @@ function renderMy() {
 }
 
 // ================================================================
-// QR CODE (lightweight inline)
+// QR CODE (loads CDN library once, queues canvases)
 // ================================================================
+var _qrQueue = [];
+var _qrLoading = false;
 function generateQRCode(canvas, text) {
-  try {
-    var size = 200;
-    var ctx = canvas.getContext('2d');
+  var size = canvas.width || 200;
+  var ctx = canvas.getContext('2d');
+
+  function drawPlaceholder() {
     canvas.width = size; canvas.height = size;
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, size, size);
-    ctx.fillStyle = '#1a1a1a';
-    ctx.font = 'bold 14px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText('案场销管', size/2, size/2 - 20);
     ctx.fillStyle = '#C9A962';
-    ctx.font = '12px system-ui';
-    ctx.fillText('扫码访问', size/2, size/2);
+    ctx.font = 'bold 13px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('加载中...', size/2, size/2 - 5);
     ctx.fillStyle = '#888';
-    ctx.font = '9px monospace';
-    var urlShort = text.length > 35 ? text.slice(0,32) + '...' : text;
-    ctx.fillText(urlShort, size/2, size/2 + 20);
-    // Try to load QR library
+    ctx.font = '10px monospace';
+    ctx.fillText('扫码访问', size/2, size/2 + 15);
+  }
+
+  function drawQR() {
+    try {
+      var typeNumber = text.length > 25 ? 6 : 4;
+      var qr = qrcode(typeNumber, 'M');
+      qr.addData(text);
+      qr.make();
+      var modSize = Math.floor(size / qr.getModuleCount());
+      var off = Math.floor((size - modSize * qr.getModuleCount()) / 2);
+      canvas.width = size; canvas.height = size;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#111';
+      for (var r = 0; r < qr.getModuleCount(); r++) {
+        for (var c = 0; c < qr.getModuleCount(); c++) {
+          if (qr.isDark(r, c)) {
+            ctx.fillRect(off + c * modSize, off + r * modSize, modSize, modSize);
+          }
+        }
+      }
+    } catch(e) {
+      drawPlaceholder();
+    }
+  }
+
+  if (typeof qrcode !== 'undefined') {
+    drawQR();
+    return;
+  }
+
+  // Queue for later
+  _qrQueue.push({ canvas: canvas, text: text });
+  drawPlaceholder();
+
+  if (!_qrLoading) {
+    _qrLoading = true;
     var script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
     script.onload = function() {
-      try {
-        var qr = qrcode(0, 'M');
-        qr.addData(text);
-        qr.make();
-        var modSize = Math.floor(size / qr.getModuleCount());
-        var off = Math.floor((size - modSize * qr.getModuleCount()) / 2);
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, size, size);
-        ctx.fillStyle = '#111';
-        var mc = qr.getModuleCount();
-        for (var r = 0; r < mc; r++) {
-          for (var c = 0; c < mc; c++) {
-            if (qr.isDark(r, c)) {
-              ctx.fillRect(off + c * modSize, off + r * modSize, modSize, modSize);
-            }
-          }
-        }
-      } catch(e2) {}
+      var q = _qrQueue;
+      _qrQueue = [];
+      q.forEach(function(item) {
+        generateQRCode(item.canvas, item.text);
+      });
+    };
+    script.onerror = function() {
+      _qrQueue = [];
+      _qrLoading = false;
     };
     document.head.appendChild(script);
-  } catch(e) {}
+  }
 }
 
 // ================================================================
@@ -3402,17 +3433,12 @@ function exportAllData() {
   showToast('已导出全量数据');
 }
 
-function escHtml(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 function renderAll() {
   var moved = autoPoolCheck();
   renderWorkbench && renderWorkbench();
-  renderCust && renderCust();
-  renderStat && renderStat();
-  renderMe && renderMe();
+  renderCustomerList && renderCustomerList();
+  renderStats && renderStats();
+  renderMy && renderMy();
   if (moved && moved.length > 0) toast('🔄 ' + moved.length + '位客户超时自动移入公海池', 'success');
 }
 
