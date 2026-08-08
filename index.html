@@ -1106,8 +1106,10 @@ function renderCustomerCard(c) {
   var daysNew = daysBetween(today(), c.createdAt ? c.createdAt.slice(0, 10) : today());
   var isNew = daysNew <= 2;
   var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
-  var consultantHtml = isManager
-    ? '<span style="font-size:10px;color:var(--gold);font-weight:600;">顾问：' + escRaw(c.consultant) + '</span>' : '';
+
+  // Consultant in header (for manager)
+  var consultantHeader = isManager
+    ? '<span style="font-size:12px;color:var(--gold);font-weight:500;flex-shrink:0;">' + escRaw(c.consultant) + '</span>' : '';
 
   // Status tag
   var statusTag = '';
@@ -1119,20 +1121,24 @@ function renderCustomerCard(c) {
     statusTag = '<span class="tag ' + status.cls + '">' + status.text + '</span>';
   }
 
-  // Price info
+  // Price info: 房源 · 面积 · 总价 · 单价
   var priceInfo = '';
   if (c.calculatedPrice && c.calculatedPrice.price) {
-    priceInfo = '<span style="font-size:11px;color:var(--gold);font-weight:600;">💰 ' + escHtml(c.calculatedPrice.price) + '元';
-    if (c.calculatedPrice.unitPrice != null) priceInfo += ' · ' + escHtml(c.calculatedPrice.unitPrice.toFixed(2)) + '元/㎡';
-    priceInfo += '</span>';
+    var pp = c.calculatedPrice;
+    var parts = [];
+    if (pp.building || pp.unit) parts.push((pp.building || '') + ' ' + (pp.unit || ''));
+    if (pp.area) parts.push(pp.area + '㎡');
+    parts.push(pp.price + '元');
+    if (pp.unitPrice != null) parts.push(pp.unitPrice.toFixed(2) + '元/㎡');
+    priceInfo = '<span style="font-size:11px;color:var(--gold);font-weight:600;">💰 ' + parts.join(' · ') + '</span>';
   }
 
-  // Primary info row
+  // Info row: channel, demand area, competitor
   var infoRow = '';
   var infoParts = [];
   if (c.channel) infoParts.push('📌 ' + escRaw(c.channel));
-  if (c.area) infoParts.push('📐 ' + escRaw(c.area) + '㎡');
-  if (c.competitor) infoParts.push('⚖ ' + escRaw(c.competitor));
+  if (c.area) infoParts.push('需求：' + escRaw(c.area) + '㎡');
+  if (c.competitor) infoParts.push('对比：' + escRaw(c.competitor));
   if (infoParts.length > 0) infoRow = '<div style="font-size:13px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:8px;">' + infoParts.map(function(p) { return '<span>' + p + '</span>'; }).join('') + '</div>';
 
   var stageInfo = SALES_STAGES.find(function(s) { return s.key === c.salesStage; }) || SALES_STAGES[0];
@@ -1148,6 +1154,7 @@ function renderCustomerCard(c) {
     '<div class="card-row1">' +
       '<span class="level-badge ' + c.level + '">' + c.level + '</span>' +
       '<div class="card-name">' + escRaw(c.name) + '</div>' +
+      consultantHeader +
       revisitHtml +
       '<div class="card-phone">' + escRaw(maskPhone(c.phone)) + '</div>' +
     '</div>' +
@@ -1155,7 +1162,7 @@ function renderCustomerCard(c) {
     '<div class="card-tags">' + statusTag +
       '<span class="stage-badge stage-' + c.salesStage + '">' + stageInfo.icon + ' ' + c.salesStage + '</span>' +
       (c.followUps && c.followUps[0] ? '<span class="method-tag method-' + c.followUps[0].method + '">' + c.followUps[0].method + '</span>' : '') +
-      priceInfo + consultantHtml +
+      priceInfo +
     '</div>' +
     '<div class="card-meta">' +
       '<span>' + (c.createdAt ? c.createdAt.slice(5, 10) : '') + ' 录入</span>' +
@@ -1280,10 +1287,19 @@ function renderWorkbench() {
     todayFollowups.slice(0, 5).forEach(function(c) {
       var infoExtras = [];
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
-      if (c.area) infoExtras.push('📐' + escRaw(c.area) + '㎡');
-      if (c.calculatedPrice && c.calculatedPrice.price) infoExtras.push('💰' + escHtml(c.calculatedPrice.price) + '元');
+      if (c.area) infoExtras.push('需求：' + escRaw(c.area) + '㎡');
+      if (c.calculatedPrice && c.calculatedPrice.price) {
+        var pp = c.calculatedPrice;
+        var pParts = [(pp.building||'') + (pp.unit||'')];
+        if (pp.area) pParts.push(pp.area + '㎡');
+        pParts.push(pp.price + '元');
+        if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
+        infoExtras.push('💰' + pParts.join('·'));
+      }
+      var isMgr = DB.currentUser && DB.currentUser.role === '销售经理';
+      var consultantLine = isMgr && c.consultant ? '<span style="font-size:10px;color:var(--gold);">顾问：' + escRaw(c.consultant) + '</span>' : '';
       var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div><div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '需今日跟进') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔥 今日</span></div>';
+      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '需今日跟进') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔥 今日</span></div>';
     });
     html += '</div></div>';
   }
@@ -1294,10 +1310,20 @@ function renderWorkbench() {
       var d = daysBetween(c.followUpDate, todayStr);
       var infoExtras = [];
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
-      if (c.area) infoExtras.push('📐' + escRaw(c.area) + '㎡');
-      if (c.competitor) infoExtras.push('⚖' + escRaw(c.competitor));
+      if (c.area) infoExtras.push('需求：' + escRaw(c.area) + '㎡');
+      if (c.competitor) infoExtras.push('对比：' + escRaw(c.competitor));
+      if (c.calculatedPrice && c.calculatedPrice.price) {
+        var pp = c.calculatedPrice;
+        var pParts = [(pp.building||'') + (pp.unit||'')];
+        if (pp.area) pParts.push(pp.area + '㎡');
+        pParts.push(pp.price + '元');
+        if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
+        infoExtras.push('💰' + pParts.join('·'));
+      }
+      var isMgr = DB.currentUser && DB.currentUser.role === '销售经理';
+      var consultantLine = isMgr && c.consultant ? '<span style="font-size:10px;color:var(--gold);">顾问：' + escRaw(c.consultant) + '</span>' : '';
       var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div><div style="font-size:12px;color:var(--text-dim);">逾期 ' + d + ' 天 · ' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-overdue">⏸ ' + d + '天</span></div>';
+      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">逾期 ' + d + ' 天 · ' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-overdue">⏸ ' + d + '天</span></div>';
     });
     html += '</div></div>';
   }
@@ -1309,10 +1335,20 @@ function renderWorkbench() {
       var label = d === 0 ? '今天' : Math.abs(d) + '天后';
       var infoExtras = [];
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
-      if (c.area) infoExtras.push('📐' + escRaw(c.area) + '㎡');
-      if (c.competitor) infoExtras.push('⚖' + escRaw(c.competitor));
+      if (c.area) infoExtras.push('需求：' + escRaw(c.area) + '㎡');
+      if (c.competitor) infoExtras.push('对比：' + escRaw(c.competitor));
+      if (c.calculatedPrice && c.calculatedPrice.price) {
+        var pp = c.calculatedPrice;
+        var pParts = [(pp.building||'') + (pp.unit||'')];
+        if (pp.area) pParts.push(pp.area + '㎡');
+        pParts.push(pp.price + '元');
+        if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
+        infoExtras.push('💰' + pParts.join('·'));
+      }
+      var isMgr = DB.currentUser && DB.currentUser.role === '销售经理';
+      var consultantLine = isMgr && c.consultant ? '<span style="font-size:10px;color:var(--gold);">顾问：' + escRaw(c.consultant) + '</span>' : '';
       var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div><div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔔 ' + label + '</span></div>';
+      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔔 ' + label + '</span></div>';
     });
     html += '</div></div>';
   }
@@ -2578,25 +2614,32 @@ function renderStatListOverlay(filtered, label) {
     var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
     var lvlColor = { 'A': '#27AE60', 'B': '#2980B9', 'C+': '#5b8c5a', 'C': '#95A5A6', 'C-': '#8b6914', 'D': '#E67E22' }[c.level] || '#95A5A6';
 
-    // Info row: channel, area, competitor
+    // Consultant in header (for manager)
+    var consultantHeader = isManager
+      ? '<span style="font-size:12px;color:var(--gold);font-weight:500;flex-shrink:0;">' + escRaw(c.consultant) + '</span>' : '';
+
+    // Info row: channel, demand area, competitor
     var infoParts = [];
     if (c.channel) infoParts.push('<span>📌 ' + escRaw(c.channel) + '</span>');
-    if (c.area) infoParts.push('<span>📐 ' + escRaw(c.area) + '㎡</span>');
-    if (c.competitor) infoParts.push('<span>⚖ ' + escRaw(c.competitor) + '</span>');
+    if (c.area) infoParts.push('<span>需求：' + escRaw(c.area) + '㎡</span>');
+    if (c.competitor) infoParts.push('<span>对比：' + escRaw(c.competitor) + '</span>');
     var infoRow = infoParts.length > 0 ? '<div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:6px;">' + infoParts.join('') + '</div>' : '';
 
-    // Price tag
+    // Price: 房源 · 面积 · 总价 · 单价
     var priceInfo = '';
     if (c.calculatedPrice && c.calculatedPrice.price) {
-      priceInfo = '<span style="font-size:12px;color:var(--gold);font-weight:600;">💰 ' + escHtml(c.calculatedPrice.price) + '元' + (c.calculatedPrice.unitPrice != null ? ' · ' + escHtml(c.calculatedPrice.unitPrice.toFixed(2)) + '元/㎡' : '') + '</span>';
+      var pp = c.calculatedPrice;
+      var pParts = [];
+      if (pp.building || pp.unit) pParts.push((pp.building || '') + ' ' + (pp.unit || ''));
+      if (pp.area) pParts.push(pp.area + '㎡');
+      pParts.push(pp.price + '元');
+      if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
+      priceInfo = '<span style="font-size:12px;color:var(--gold);font-weight:600;">💰 ' + pParts.join(' · ') + '</span>';
     }
 
     // Deal tag
     var dealTag = c.dealStatus && c.dealStatus !== '未成交'
       ? '<span style="background:rgba(46,204,113,0.15);color:var(--green);padding:2px 7px;border-radius:6px;font-size:12px;font-weight:600;">' + c.dealStatus + '</span>' : '';
-
-    // Consultant
-    var consultantHtml = isManager ? '<span style="font-size:11px;color:var(--gold);font-weight:600;">顾问：' + escRaw(c.consultant) + '</span>' : '';
 
     // Followup date
     var followupMeta = '';
@@ -2611,12 +2654,13 @@ function renderStatListOverlay(filtered, label) {
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
         '<span class="level-badge ' + c.level + '">' + c.level + '</span>' +
         '<span style="font-size:15px;font-weight:600;color:#1a1a1a;flex:1;">' + escRaw(c.name) + '</span>' +
+        consultantHeader +
         revisitHtml +
         '<span style="font-size:12px;color:var(--text-dim);">' + escHtml(phoneMask) + '</span>' +
       '</div>' +
       infoRow +
       '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">' +
-        stageTag(c.salesStage || '问询') + dealTag + priceInfo + consultantHtml +
+        stageTag(c.salesStage || '问询') + dealTag + priceInfo +
       '</div>' +
       '<div style="margin-top:4px;font-size:11px;color:var(--text-dim);display:flex;gap:8px;flex-wrap:wrap;">' +
         (c.residence ? '<span>🏠 ' + escRaw(c.residence) + '</span>' : '') +
