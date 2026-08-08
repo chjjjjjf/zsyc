@@ -1426,23 +1426,37 @@ function renderTeamStats() {
   var totalDeal = all.filter(function(c) { return c.dealStatus === '签约' || c.dealStatus === '认购'; }).length;
   var totalRate = all.length ? Math.round(totalDeal / all.length * 100) : 0;
 
+  // Initialize groups with ALL consultants from DEMO_ACCOUNTS (excluding manager)
   var groups = {};
+  Object.keys(DEMO_ACCOUNTS).forEach(function(name) {
+    if (DEMO_ACCOUNTS[name].role === '置业顾问') groups[name] = [];
+  });
+  // Fill with actual customer data
   all.forEach(function(c) {
     var name = c.consultant || '未分配';
     if (!groups[name]) groups[name] = [];
     groups[name].push(c);
   });
 
-  var teamHtml = Object.keys(groups).map(function(name) {
+  // Sort: consultants with customers first, then by name
+  var consultantNames = Object.keys(groups).sort(function(a, b) {
+    var aHas = groups[a].length > 0 ? 0 : 1;
+    var bHas = groups[b].length > 0 ? 0 : 1;
+    if (aHas !== bHas) return aHas - bHas;
+    return a.localeCompare(b);
+  });
+
+  var teamHtml = consultantNames.map(function(name) {
     var list = groups[name];
     var deal = list.filter(function(c) { return c.dealStatus === '签约' || c.dealStatus === '认购'; }).length;
     var signed = list.filter(function(c) { return c.dealStatus === '签约'; }).length;
-    var rate = Math.round(deal / list.length * 100);
+    var rate = list.length ? Math.round(deal / list.length * 100) : 0;
     var counts = { A: 0, B: 0, 'C+': 0, C: 0, 'C-': 0, D: 0 };
     list.forEach(function(c) { if (counts[c.level] !== undefined) counts[c.level]++; else counts[c.level] = 1; });
     var overdueN = list.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; }).length;
     var rateColor = rate >= 30 ? 'var(--green)' : (rate >= 15 ? 'var(--gold)' : 'var(--text-dim)');
-    return '<div class="team-card" style="cursor:pointer;">' +
+    var emptyClass = list.length === 0 ? ' style="opacity:0.5;"' : '';
+    return '<div class="team-card"' + emptyClass + ' style="cursor:pointer;">' +
       '<div class="team-card-head">' +
         '<span class="team-name"> ' + escRaw(name) + '</span>' +
         '<span class="team-rate" style="color:' + rateColor + '">成交率 ' + rate + '%</span>' +
