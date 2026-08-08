@@ -83,11 +83,13 @@ body { display: flex; flex-direction: column; }
 .card-row1 { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .card-name { font-size: 16px; font-weight: 600; color: var(--text); flex: 1; }
 .card-phone { font-size: 13px; color: var(--text-dim); }
-.level-badge { display: inline-block; width: 22px; height: 22px; border-radius: 6px; text-align: center; line-height: 22px; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
-.level-badge.A { background: #1a7a3f; }
-.level-badge.B { background: #2469b5; }
-.level-badge.C { background: #555; }
-.level-badge.D { background: #c06010; }
+.level-badge { display: inline-block; min-width: 24px; height: 22px; border-radius: 6px; text-align: center; line-height: 22px; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; padding: 0 3px; background: #555; }
+.level-badge.A { background: #1a7a3f; font-size: 13px; }
+.level-badge.B { background: #2469b5; font-size: 13px; }
+.level-badge.C\+ { background: #5b8c5a; }
+.level-badge.C { background: #555; font-size: 13px; }
+.level-badge.C- { background: #8b6914; }
+.level-badge.D { background: #c06010; font-size: 13px; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .tag { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 6px; font-size: 11px; }
 .tag-overdue { background: rgba(231,76,60,0.2); color: var(--red); }
@@ -371,7 +373,9 @@ body { display: flex; flex-direction: column; }
         <option value="">全部</option>
         <option value="A">A级</option>
         <option value="B">B级</option>
+        <option value="C+">C+级</option>
         <option value="C">C级</option>
+        <option value="C-">C-级</option>
         <option value="D">D级</option>
       </select>
     </div>
@@ -671,6 +675,8 @@ function loadDB() {
         if (!c.history) c.history = [];
       });
       if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
+      if (!DB.soldUnits) DB.soldUnits = {};
+      if (!DB.sessions) DB.sessions = {};
       // Restore accounts & admin code
       if (DB.accounts && Object.keys(DB.accounts).length > 0) { Object.assign(DEMO_ACCOUNTS, DB.accounts); }
       if (DB.adminCode) { ADMIN_CODE = DB.adminCode; }
@@ -818,7 +824,7 @@ function parseClipboard(text) {
     var raw = m[1].trim();
     r.channel = CHAN_MAP[raw] || (CHANNELS.find(function(c) { return raw.indexOf(c) !== -1; })) || raw;
   }
-  m = text.match(/(?:客户等级|等级)[:：]\s*([A-Da-d])/); if (m) r.level = m[1].toUpperCase();
+  m = text.match(/(?:客户等级|等级)[:：]\s*(C\+|C-|[A-Da-d])/); if (m) r.level = m[1].toUpperCase();
   m = text.match(/(?:职业)[:：]\s*(.+)/); if (m) r.job = m[1].trim();
   m = text.match(/(?:年龄)[:：]\s*(\d+)/); if (m) r.age = m[1];
   m = text.match(/(?:居住小区|小区)[:：]\s*(.+)/); if (m) r.residence = m[1].trim();
@@ -919,39 +925,62 @@ function renderCustomerCard(c) {
   var status = getFollowupStatus(c);
   var daysNew = daysBetween(today(), c.createdAt ? c.createdAt.slice(0, 10) : today());
   var isNew = daysNew <= 2;
-  var consultantHtml = (DB.currentUser && DB.currentUser.role === '销售经理')
-    ? '<span style="font-size:11px;color:var(--gold);"> ' + escRaw(c.consultant) + '</span>' : '';
-  var noteHtml = (c.note || c.followUpNote)
-    ? '<div class="card-note"> ' + escRaw(c.note || c.followUpNote || '') + '</div>' : '';
-  var channelBadge = c.channel ? '<span class="tag" style="background:var(--card2);color:var(--text-dim)">' + escRaw(c.channel) + '</span>' : '';
-  var tagsHtml = '';
+  var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
+  var consultantHtml = isManager
+    ? '<span style="font-size:10px;color:var(--gold);font-weight:600;">顾问：' + escRaw(c.consultant) + '</span>' : '';
+
+  // Status tag
+  var statusTag = '';
   if (c.inPool) {
-    tagsHtml += '<span class="pool-badge">🏊 公共池</span>';
+    statusTag = '<span class="tag" style="background:rgba(201,169,98,0.15);color:var(--gold);font-weight:600;">🏊 公共池</span>';
+  } else if (isNew && !status.text.includes('过期')) {
+    statusTag = '<span class="tag tag-new">🆕 新登记</span>';
   } else {
-    var statusTag = isNew && !status.text.includes('过期')
-      ? '<span class="tag tag-new">🆕 新登记</span>'
-      : '<span class="tag ' + status.cls + '">' + status.text + '</span>';
-    tagsHtml += statusTag;
+    statusTag = '<span class="tag ' + status.cls + '">' + status.text + '</span>';
   }
+
+  // Price info
+  var priceInfo = '';
+  if (c.calculatedPrice && c.calculatedPrice.price) {
+    priceInfo = '<span style="font-size:11px;color:var(--gold);font-weight:600;">💰 ' + escHtml(c.calculatedPrice.price) + '万';
+    if (c.calculatedPrice.unitPrice != null) priceInfo += ' · ' + escHtml(c.calculatedPrice.unitPrice) + '万/㎡';
+    priceInfo += '</span>';
+  }
+
+  // Primary info row
+  var infoRow = '';
+  var infoParts = [];
+  if (c.channel) infoParts.push('📌 ' + escRaw(c.channel));
+  if (c.area) infoParts.push('📐 ' + escRaw(c.area) + '㎡');
+  if (c.competitor) infoParts.push('⚖ ' + escRaw(c.competitor));
+  if (infoParts.length > 0) infoRow = '<div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:8px;">' + infoParts.map(function(p) { return '<span>' + p + '</span>'; }).join('') + '</div>';
+
   var stageInfo = SALES_STAGES.find(function(s) { return s.key === c.salesStage; }) || SALES_STAGES[0];
-  tagsHtml += '<span class="stage-badge stage-' + c.salesStage + '">' + stageInfo.icon + ' ' + c.salesStage + '</span>';
-  if (c.followUps && c.followUps.length > 0) {
-    var last = c.followUps[0];
-    tagsHtml += '<span class="method-tag method-' + last.method + '">' + last.method + '</span>';
+  var followupMeta = '';
+  if (c.followUpDate) {
+    var fd = daysBetween(c.followUpDate, today());
+    followupMeta = '<span style="font-size:10px;color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>';
   }
-  tagsHtml += channelBadge + consultantHtml;
+
   return '<div class="customer-card" data-id="' + c.id + '">' +
     '<div class="card-row1">' +
       '<span class="level-badge ' + c.level + '">' + c.level + '</span>' +
       '<div class="card-name">' + escRaw(c.name) + '</div>' +
       '<div class="card-phone">' + escRaw(maskPhone(c.phone)) + '</div>' +
     '</div>' +
-    '<div class="card-tags">' + tagsHtml + '</div>' +
+    infoRow +
+    '<div class="card-tags">' + statusTag +
+      '<span class="stage-badge stage-' + c.salesStage + '">' + stageInfo.icon + ' ' + c.salesStage + '</span>' +
+      (c.followUps && c.followUps[0] ? '<span class="method-tag method-' + c.followUps[0].method + '">' + c.followUps[0].method + '</span>' : '') +
+      priceInfo + consultantHtml +
+    '</div>' +
     '<div class="card-meta">' +
-      '<span> 录入 ' + (c.createdAt ? c.createdAt.slice(5, 10) : '') + '</span>' +
-      (c.visitTime ? '<span> 接待 ' + fDate(c.visitTime) + '</span>' : '') +
-      (c.residence ? '<span> ' + escRaw(c.residence) + '</span>' : '') +
-    '</div>' + noteHtml +
+      '<span>' + (c.createdAt ? c.createdAt.slice(5, 10) : '') + ' 录入</span>' +
+      (c.visitTime ? '<span>' + fDate(c.visitTime) + ' 接待</span>' : '') +
+      (c.residence ? '<span>🏠 ' + escRaw(c.residence) + '</span>' : '') +
+      (c.revisitCount ? '<span>🔄 ' + c.revisitCount + '次复访</span>' : '') +
+      followupMeta +
+    '</div>' +
   '</div>';
 }
 
@@ -1039,7 +1068,9 @@ function renderWorkbench() {
   });
   var levelA = customers.filter(function(c) { return c.level === 'A'; }).length;
   var levelB = customers.filter(function(c) { return c.level === 'B'; }).length;
+  var levelCp = customers.filter(function(c) { return c.level === 'C+'; }).length;
   var levelC = customers.filter(function(c) { return c.level === 'C'; }).length;
+  var levelCm = customers.filter(function(c) { return c.level === 'C-'; }).length;
   var levelD = customers.filter(function(c) { return c.level === 'D'; }).length;
   var newThisWeek = customers.filter(function(c) { return c.createdAt && daysBetween(todayStr, c.createdAt.slice(0, 10)) <= 7; }).length;
 
@@ -1055,7 +1086,9 @@ function renderWorkbench() {
     '<div class="stat-card stat-clickable" data-stat="pending"><div class="stat-num" style="color:' + (pendingFollowUp.length > 0 ? 'var(--yellow)' : 'var(--text-dim)') + '">' + pendingFollowUp.length + '</div><div class="stat-label">待跟进</div><div class="stat-tap">点击查看</div></div>' +
     '<div class="stat-card stat-clickable" data-stat="level-A"><div class="stat-num" style="color:var(--gold)">' + levelA + '</div><div class="stat-label">A级客户</div><div class="stat-tap">点击查看</div></div>' +
     '<div class="stat-card stat-clickable" data-stat="level-B"><div class="stat-num" style="color:var(--blue)">' + levelB + '</div><div class="stat-label">B级客户</div><div class="stat-tap">点击查看</div></div>' +
+    '<div class="stat-card stat-clickable" data-stat="level-C+"><div class="stat-num" style="color:#5b8c5a">' + levelCp + '</div><div class="stat-label">C+级客户</div><div class="stat-tap">点击查看</div></div>' +
     '<div class="stat-card stat-clickable" data-stat="level-C"><div class="stat-num" style="color:var(--gray)">' + levelC + '</div><div class="stat-label">C级客户</div><div class="stat-tap">点击查看</div></div>' +
+    '<div class="stat-card stat-clickable" data-stat="level-C-"><div class="stat-num" style="color:#8b6914">' + levelCm + '</div><div class="stat-label">C-级客户</div><div class="stat-tap">点击查看</div></div>' +
     '<div class="stat-card stat-clickable" data-stat="level-D"><div class="stat-num" style="color:var(--orange)">' + levelD + '</div><div class="stat-label">D级客户</div><div class="stat-tap">点击查看</div></div>' +
   '</div>';
 
@@ -1097,7 +1130,7 @@ function renderWorkbench() {
       var stat = card.dataset.stat;
       var map = {
         'all': ['所有'], 'new': ['本周新增'], 'overdue': ['逾期'], 'pending': ['待跟进'],
-        'level-A': ['A级'], 'level-B': ['B级'], 'level-C': ['C级'], 'level-D': ['D级']
+        'level-A': ['A级'], 'level-B': ['B级'], 'level-C+': ['C+级'], 'level-C': ['C级'], 'level-C-': ['C-级'], 'level-D': ['D级']
       };
       if (map[stat]) showStatList(99, map[stat][0]);
     });
@@ -1128,13 +1161,13 @@ function renderSelfStats() {
   var signedCount = customers.filter(function(c) { return c.dealStatus === '签约'; }).length;
   var total = customers.length || 1;
   var dealRate = Math.round(dealCount / total * 100);
-  var levelCounts = { A: 0, B: 0, C: 0, D: 0 };
+  var levelCounts = { A: 0, B: 0, 'C+': 0, C: 0, 'C-': 0, D: 0 };
   var channelCounts = {};
   customers.forEach(function(c) {
-    if (levelCounts[c.level] !== undefined) levelCounts[c.level]++;
+    if (levelCounts[c.level] !== undefined) levelCounts[c.level]++; else levelCounts[c.level] = 1;
     if (c.channel) channelCounts[c.channel] = (channelCounts[c.channel] || 0) + 1;
   });
-  var levelColors = { A: '#2ecc71', B: '#3498db', C: '#888', D: '#e67e22' };
+  var levelColors = { A: '#2ecc71', B: '#3498db', 'C+': '#5b8c5a', C: '#888', 'C-': '#8b6914', D: '#e67e22' };
   var levelHtml = Object.keys(levelCounts).map(function(lv) {
     var cnt = levelCounts[lv];
     return '<div class="bar-row bar-clickable" style="cursor:pointer;" data-stat-bar="level" data-stat-val="' + lv + '级"><span class="bar-label" style="color:' + levelColors[lv] + '">' + lv + '级</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(cnt / total * 100) + '%;background:' + levelColors[lv] + '"></div></div><span class="bar-val">' + cnt + '人</span></div>';
@@ -1208,8 +1241,8 @@ function renderTeamStats() {
     var deal = list.filter(function(c) { return c.dealStatus === '签约' || c.dealStatus === '认购'; }).length;
     var signed = list.filter(function(c) { return c.dealStatus === '签约'; }).length;
     var rate = Math.round(deal / list.length * 100);
-    var counts = { A: 0, B: 0, C: 0, D: 0 };
-    list.forEach(function(c) { if (counts[c.level] !== undefined) counts[c.level]++; });
+    var counts = { A: 0, B: 0, 'C+': 0, C: 0, 'C-': 0, D: 0 };
+    list.forEach(function(c) { if (counts[c.level] !== undefined) counts[c.level]++; else counts[c.level] = 1; });
     var overdueN = list.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; }).length;
     var rateColor = rate >= 30 ? 'var(--green)' : (rate >= 15 ? 'var(--gold)' : 'var(--text-dim)');
     return '<div class="team-card" style="cursor:pointer;">' +
@@ -1223,7 +1256,10 @@ function renderTeamStats() {
         '<div class="team-cell"><div class="n" style="color:var(--red)">' + overdueN + '</div><div class="l">逾期跟进</div></div>' +
         '<div class="team-cell"><div class="n" style="color:#2ecc71">' + counts.A + '</div><div class="l">A级</div></div>' +
         '<div class="team-cell"><div class="n" style="color:#3498db">' + counts.B + '</div><div class="l">B级</div></div>' +
-        '<div class="team-cell"><div class="n" style="color:#e67e22">' + (counts.C + counts.D) + '</div><div class="l">C+D级</div></div>' +
+        '<div class="team-cell"><div class="n" style="color:#5b8c5a">' + counts['C+'] + '</div><div class="l">C+级</div></div>' +
+        '<div class="team-cell"><div class="n" style="color:#555">' + counts.C + '</div><div class="l">C级</div></div>' +
+        '<div class="team-cell"><div class="n" style="color:#8b6914">' + counts['C-'] + '</div><div class="l">C-级</div></div>' +
+        '<div class="team-cell"><div class="n" style="color:#e67e22">' + counts.D + '</div><div class="l">D级</div></div>' +
       '</div>' +
       '<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">签约 ' + signed + ' · 认购 ' + (deal - signed) + ' · 未成交 ' + (list.length - deal) + '</div>' +
     '</div>';
@@ -1236,8 +1272,8 @@ function renderTeamStats() {
 
   var html = '<div class="chart-title" style="padding:14px 16px 4px;">📊 团队总览</div>' +
     '<div class="perf-grid" id="team-perf-grid">' +
-      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="all"><div class="n">' + all.length + '</div><div class="l">总来访组数</div><div class="stat-tap">点击查看</div></div>' +
-      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="deal"><div class="n">' + totalDeal + '</div><div class="l">总成交</div><div class="stat-tap">点击查看</div></div>' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="visit"><div class="n">' + all.length + '</div><div class="l">总来访组数</div><div class="stat-tap">点击选择时段</div></div>' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="deal2"><div class="n">' + totalDeal + '</div><div class="l">总成交</div><div class="stat-tap">点击选择时段</div></div>' +
       '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="all"><div class="n">' + totalRate + '%</div><div class="l">整体成交率</div><div class="stat-tap">点击查看全部</div></div>' +
     '</div>' +
     '<div class="section-title">👥 每位顾问情况 <span style="font-size:11px;color:var(--text-dim);">点击卡片查看详情</span></div>' +
@@ -1250,7 +1286,8 @@ function renderTeamStats() {
     card.addEventListener('click', function() {
       var s = card.dataset.teamStat;
       if (s === 'all') showStatList(99, '所有');
-      else if (s === 'deal') showStatList(99, 'deal');
+      else if (s === 'visit') showTeamTimeOptions('visit', '来访');
+      else if (s === 'deal2') showTeamTimeOptions('deal', '成交');
     });
   });
 
@@ -1293,8 +1330,8 @@ function renderAnalysis() {
   var poolCount = allCustomers.filter(function(c) { return c.inPool; }).length;
   var revisitCount = allCustomers.filter(function(c) { return (c.revisitCount || 0) >= 2; }).length;
 
-  var levelChips = ['ALL', 'A', 'B', 'C', 'D'].map(function(lv) {
-    var col = lv === 'ALL' ? '#C9A962' : { A: '#2ecc71', B: '#3498db', C: '#888', D: '#e67e22' }[lv];
+  var levelChips = ['ALL', 'A', 'B', 'C+', 'C', 'C-', 'D'].map(function(lv) {
+    var col = lv === 'ALL' ? '#C9A962' : { A: '#2ecc71', B: '#3498db', 'C+': '#5b8c5a', C: '#888', 'C-': '#8b6914', D: '#e67e22' }[lv];
     return filterChip('level', lv, lv === 'ALL' ? '全部' : lv + '级', analysisFilter.level === lv, col);
   }).join('');
 
@@ -1642,7 +1679,11 @@ function openDetail(id) {
     ? '<div class="info-item" style="grid-column:1/-1;"><div class="info-label">跟进状态</div><div class="info-value"><span class="tag ' + status.cls + '">' + status.text + '</span> · ' + escRaw(c.followUpNote || '无跟进说明') + '</div></div>' : '';
 
   var priceHtml = c.calculatedPrice
-    ? '<div class="info-item" style="background:rgba(201,169,98,0.08);border-left:3px solid var(--gold);"><div class="info-label" style="color:var(--gold);font-size:11px;">💰 算价结果</div><div class="info-value" style="font-size:14px;"><b>' + escHtml(c.calculatedPrice.building || '') + '　<span style="font-size:16px;color:var(--gold);">' + escHtml(c.calculatedPrice.price || '') + '万</span></b><div style="font-size:11px;color:var(--text-dim);margin-top:2px;">算价日期：' + escHtml(c.calculatedPrice.date || '') + '</div></div></div>' : '';
+    ? '<div class="info-item" style="background:rgba(201,169,98,0.08);border-left:3px solid var(--gold);"><div class="info-label" style="color:var(--gold);font-size:11px;">💰 算价结果</div><div class="info-value" style="font-size:13px;">' +
+        '<div style="margin-bottom:4px;"><b>房源：</b>' + escHtml((c.calculatedPrice.building || '') + ' ' + (c.calculatedPrice.unit || '')) + '　<b>面积：</b>' + escHtml(c.calculatedPrice.area || '') + '㎡</div>' +
+        '<div><b>总价：</b><span style="font-size:16px;color:var(--gold);font-weight:700;">' + escHtml(c.calculatedPrice.price || '') + ' 万元</span>　<b>单价：</b><span style="font-size:14px;color:var(--gold);font-weight:700;">' + (c.calculatedPrice.unitPrice != null ? escHtml(c.calculatedPrice.unitPrice) + ' 万元/㎡' : '—') + '</span></div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">算价日期：' + escHtml(c.calculatedPrice.date || '') + '</div>' +
+      '</div></div>' : '';
 
   document.getElementById('detail-content').innerHTML =
     '<div class="info-grid">' +
@@ -1650,7 +1691,7 @@ function openDetail(id) {
       '<div class="info-item"><div class="info-label">来访渠道</div><div class="info-value">' + escRaw(c.channel || '—') + '</div></div>' +
       consHtml +
       '<div class="info-item"><div class="info-label">电话号码</div><div class="info-value">' + escRaw(c.phone) + '</div></div>' +
-      '<div class="info-item"><div class="info-label">是否算价</div><div class="info-value">' + (c.calculated ? '是' : '否') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">是否算价</div><div class="info-value">' + (c.calculated ? (c.calculatedPrice && c.calculatedPrice.unitPrice ? '是 · ' + c.calculatedPrice.unitPrice + '万元/㎡' : '是') : '否') + '</div></div>' +
       priceHtml +
       '<div class="info-item"><div class="info-label">是否全流程</div><div class="info-value">' + (c.fullProcess ? '是' : '否') + '</div></div>' +
       '<div class="info-item"><div class="info-label">职业</div><div class="info-value">' + escRaw(c.job || '—') + '</div></div>' +
@@ -1661,7 +1702,11 @@ function openDetail(id) {
       '<div class="info-item"><div class="info-label">对比项目</div><div class="info-value">' + escRaw(c.competitor || '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">接待时长</div><div class="info-value">' + (c.visitDuration ? escRaw(c.visitDuration) + ' 分钟' : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">接待时间</div><div class="info-value">' + (c.visitTime ? fDateTime(c.visitTime) : '—') + '</div></div>' +
-      '<div class="info-item"><div class="info-label">复访次数</div><div class="info-value">' + (c.revisitCount || 0) + ' 次</div></div>' +
+      '<div class="info-item"><div class="info-label">复访次数</div><div class="info-value" style="display:flex;align-items:center;gap:6px;">' +
+        '<button onclick="changeRevisit(\'' + c.id + '\',-1)" style="width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);background:#fff;color:var(--text-dim);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>' +
+        '<span id="rv-count-' + c.id.replace(/[^a-zA-Z0-9]/g,'') + '" style="font-size:16px;font-weight:700;min-width:20px;text-align:center;">' + (c.revisitCount || 0) + '</span>' +
+        '<button onclick="changeRevisit(\'' + c.id + '\',1)" style="width:26px;height:26px;border-radius:50%;border:1.5px solid var(--gold);background:var(--gold);color:#fff;font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>' +
+        '<span style="font-size:12px;color:var(--text-dim);">次</span></div></div>' +
       '<div class="info-item"><div class="info-label">成交状态</div><div class="info-value">' + (c.dealStatus || '未成交') + (c.dealDate ? ' · ' + escRaw(c.dealDate) : '') + '</div></div>' +
       '<div class="info-item" style="grid-column:1/-1;"><div class="info-label">销售阶段</div><div class="info-value">' +
         SALES_STAGES.map(function(s) {
@@ -1771,6 +1816,15 @@ function closeDetail() {
   showTab(currentTab);
 }
 
+function changeRevisit(cid, delta) {
+  var c = DB.customers.find(function(x) { return x.id === cid; });
+  if (!c) return;
+  c.revisitCount = Math.max(0, (c.revisitCount || 0) + delta);
+  saveDB();
+  var el = document.getElementById('rv-count-' + cid.replace(/[^a-zA-Z0-9]/g, ''));
+  if (el) el.textContent = c.revisitCount;
+}
+
 function deleteCustomer(customerId) {
   var c = DB.customers.find(function(x) { return x.id === customerId; });
   if (!c) return;
@@ -1784,56 +1838,172 @@ function deleteCustomer(customerId) {
 // ============================================================
 // 9. PRICE CALCULATOR
 // ============================================================
+var BUILDING_DATA = {
+  '1栋': { '2301': { area: 191.77, type: '01' } },
+  '2栋': { '2302': { area: 191.77, type: '02' } },
+  '3栋': { '2301': { area: 191.77, type: '01' } },
+  '4栋': { '2301': { area: 191.77, type: '01' } },
+  '5栋': { '2301': { area: 232.30, type: '01' }, '2302': { area: 232.30, type: '02' } },
+  '6栋': {}
+};
+(function() {
+  for (var f = 2; f <= 22; f++) {
+    var r = f < 10 ? '0' + f : '' + f;
+    BUILDING_DATA['6栋'][r + '01'] = { area: 178.82, type: '01' };
+    BUILDING_DATA['6栋'][r + '02'] = { area: 178.82, type: '02' };
+  }
+})();
+
+function isUnitSold(building, unit) {
+  if (!DB.soldUnits) DB.soldUnits = {};
+  return !!DB.soldUnits[building + '-' + unit];
+}
+function markUnitSold(building, unit, customerId) {
+  if (!DB.soldUnits) DB.soldUnits = {};
+  DB.soldUnits[building + '-' + unit] = { soldAt: today(), soldTo: customerId };
+  saveDB();
+}
+function markUnitAvailable(building, unit) {
+  if (!DB.soldUnits) DB.soldUnits = {};
+  delete DB.soldUnits[building + '-' + unit];
+  saveDB();
+}
+
 var _pcCurrentId = null;
-function openPriceCalc(customerId) {
-  if (!customerId) { toast('请先打开客户详情页', 'error'); return; }
+var _pcOnSave = null;
+var _pcSelectedBuilding = null;
+var _pcSelectedUnit = null;
+
+function openPriceCalc(customerId, onSave) {
+  if (!customerId) { toast('请先保存客户', 'error'); return; }
   _pcCurrentId = customerId;
+  _pcOnSave = onSave || null;
   var c = DB.customers.find(function(x) { return x.id === customerId; });
   if (!c) return;
   var ex = c.calculatedPrice || {};
-  var bldOpts = ['6栋601（179㎡）','6栋602（179㎡）','6栋603（179㎡）','6栋604（179㎡）',
-    '5栋501（119㎡）','5栋502（119㎡）','5栋503（143㎡）','5栋504（143㎡）'
-  ].map(function(b) { return '<option value="' + escHtml(b) + '"' + (ex.building === b ? ' selected' : '') + '>' + escHtml(b) + '</option>'; }).join('');
+  _pcSelectedBuilding = ex.building || null;
+  _pcSelectedUnit = ex.unit || null;
+  renderPriceCalc(c, ex);
+}
+
+function renderPriceCalc(c, ex) {
+  var bldNames = ['1栋','2栋','3栋','4栋','5栋','6栋'];
+  var bldHtml = bldNames.map(function(bld) {
+    var units = BUILDING_DATA[bld];
+    var unitKeys = Object.keys(units);
+    var allSold = unitKeys.length > 0 && unitKeys.every(function(u) { return isUnitSold(bld, u); });
+    var isSel = _pcSelectedBuilding === bld;
+    var bg = allSold ? '#e8e8e8' : (isSel ? 'rgba(201,169,98,0.2)' : '#fff');
+    var border = allSold ? '#ddd' : (isSel ? 'var(--gold)' : '#e5e5e5');
+    var color = allSold ? '#bbb' : (isSel ? 'var(--gold)' : '#333');
+    var cursor = allSold ? 'default' : 'pointer';
+    return '<div onclick="' + (allSold ? 'return' : 'selectBuilding(\'' + bld + '\',\'' + c.id + '\')') + '" style="cursor:' + cursor + ';padding:10px 14px;background:' + bg + ';border:2px solid ' + border + ';border-radius:10px;text-align:center;font-size:14px;font-weight:600;color:' + color + ';transition:all 0.15s;">' + bld + (allSold ? ' (售罄)' : '') + '</div>';
+  }).join('');
+
+  var unitHtml = '';
+  if (_pcSelectedBuilding) {
+    var bldUnits = BUILDING_DATA[_pcSelectedBuilding];
+    var ukeys = Object.keys(bldUnits);
+    var col01 = ukeys.filter(function(u) { return bldUnits[u].type === '01'; });
+    var col02 = ukeys.filter(function(u) { return bldUnits[u].type === '02'; });
+    var renderUnitCol = function(units, label) {
+      var h = '<div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--text-dim);font-weight:600;margin-bottom:6px;text-align:center;">' + label + '</div>';
+      if (units.length === 0) { h += '<div style="color:#ccc;text-align:center;font-size:12px;">无</div>'; }
+      else {
+        units.forEach(function(u) {
+          var sold = isUnitSold(_pcSelectedBuilding, u);
+          var isSel = _pcSelectedUnit === u;
+          var bg = sold ? '#e8e8e8' : (isSel ? 'rgba(201,169,98,0.2)' : '#fff');
+          var border = sold ? '#ddd' : (isSel ? 'var(--gold)' : '#e5e5e5');
+          var color = sold ? '#bbb' : (isSel ? 'var(--gold)' : '#333');
+          var cursor = sold ? 'default' : 'pointer';
+          h += '<div onclick="' + (sold ? 'return' : 'selectUnit(\'' + u + '\',\'' + c.id + '\')') + '" style="cursor:' + cursor + ';padding:8px 10px;margin-bottom:4px;background:' + bg + ';border:1.5px solid ' + border + ';border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:' + color + ';transition:all 0.15s;">' + u + '<div style="font-size:10px;font-weight:400;color:' + (sold ? '#ccc' : 'var(--text-dim)') + ';">' + bldUnits[u].area + '㎡</div></div>';
+        });
+      }
+      h += '</div>';
+      return h;
+    };
+    unitHtml = '<div style="display:flex;gap:10px;margin-bottom:12px;">' + renderUnitCol(col01, '01户型') + renderUnitCol(col02, '02户型') + '</div>';
+  }
+
+  var selInfo = '';
+  if (_pcSelectedBuilding && _pcSelectedUnit) {
+    var uArea = BUILDING_DATA[_pcSelectedBuilding][_pcSelectedUnit].area;
+    selInfo = '<div style="background:rgba(201,169,98,0.1);border:1px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;">已选：<b style="color:var(--gold);">' + _pcSelectedBuilding + ' ' + _pcSelectedUnit + '</b>　面积：<b>' + uArea + '㎡</b></div>';
+  }
+
+  var unitPriceHtml = '';
+  if (ex.price && ex.area) {
+    unitPriceHtml = '<div style="margin-bottom:12px;"><label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">单价</label><div style="font-size:16px;font-weight:700;color:var(--gold);">' + (Math.round(ex.price / ex.area * 10) / 10).toFixed(1) + ' 万元/㎡</div></div>';
+  }
 
   var html = '<div style="position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);padding:16px;" onclick="if(event.target===this)closePriceCalc()">' +
-    '<div style="background:#fff;border-radius:16px;width:100%;max-width:400px;overflow:hidden;">' +
-      '<div style="padding:16px 20px;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="background:#fff;border-radius:16px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;">' +
+      '<div style="padding:16px 20px;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1;">' +
         '<span style="font-weight:700;font-size:16px;">💰 算价格</span>' +
         '<span onclick="closePriceCalc()" style="font-size:22px;cursor:pointer;line-height:1;">×</span>' +
       '</div>' +
-      '<div style="padding:20px;">' +
-        '<div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">客户：<b style="color:#1a1a1a;">' + escRaw(c.name) + '</b>' + (c.area ? '　意向：<b style="color:#1a1a1a;">' + escHtml(c.area) + '</b>' : '') + '</div>' +
-        '<div style="margin-bottom:14px;"><label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">选择房源</label>' +
-          '<select id="pc-building" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fff;color:#1a1a1a;">' +
-            '<option value="">请选择楼栋房源</option>' + bldOpts + '</select></div>' +
-        '<div style="margin-bottom:14px;"><label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">总价（万元）</label>' +
-          '<input type="number" id="pc-price" placeholder="如：428" value="' + (ex.price || '') + '" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fff;color:#1a1a1a;"></div>' +
-        '<button onclick="savePriceCalc()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--gold);color:#fff;font-size:15px;font-weight:700;cursor:pointer;">保存算价结果</button>' +
+      '<div style="padding:16px 20px;">' +
+        '<div style="font-size:13px;color:var(--text-dim);margin-bottom:14px;">客户：<b style="color:#1a1a1a;">' + escRaw(c.name) + '</b>' + (c.area ? '　意向：<b style="color:#1a1a1a;">' + escHtml(c.area) + '㎡</b>' : '') + '</div>' +
+        '<div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">① 选择楼栋</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:14px;">' + bldHtml + '</div>' +
+        (_pcSelectedBuilding ? '<div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">② 选择户型</div>' + unitHtml : '') +
+        selInfo +
+        (selInfo ? '<div style="margin-bottom:14px;"><label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">③ 输入总价（万元）</label><input type="number" id="pc-price" placeholder="如：428" value="' + (ex.price || '') + '" oninput="calcUnitPrice()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fff;color:#1a1a1a;"></div>' +
+          '<div style="margin-bottom:14px;"><label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">④ 单价（自动计算）</label><div id="pc-unit-price" style="font-size:16px;font-weight:700;color:var(--gold);padding:8px 12px;background:rgba(201,169,98,0.08);border-radius:8px;">— 万元/㎡</div></div>' +
+          '<button onclick="savePriceCalc()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--gold);color:#fff;font-size:15px;font-weight:700;cursor:pointer;">保存算价结果</button>'
+        : '<div style="color:var(--text-dim);font-size:12px;text-align:center;padding:10px;">请选择楼栋和户型</div>') +
       '</div></div></div>';
   var overlay = document.getElementById('detail-overlay');
   overlay.innerHTML = html;
   overlay.style.display = 'block';
+  if (ex.price && ex.area) { setTimeout(function() { var el = document.getElementById('pc-unit-price'); if (el) el.textContent = (Math.round(ex.price / ex.area * 10) / 10).toFixed(1) + ' 万元/㎡'; }, 50); }
 }
 
+function selectBuilding(bld, cid) {
+  _pcSelectedBuilding = bld;
+  _pcSelectedUnit = null;
+  var c = DB.customers.find(function(x) { return x.id === cid; });
+  if (c) renderPriceCalc(c, c.calculatedPrice || {});
+}
+function selectUnit(unit, cid) {
+  _pcSelectedUnit = unit;
+  var c = DB.customers.find(function(x) { return x.id === cid; });
+  if (c) renderPriceCalc(c, c.calculatedPrice || {});
+}
+function calcUnitPrice() {
+  var price = parseFloat((document.getElementById('pc-price') || {}).value) || 0;
+  var el = document.getElementById('pc-unit-price');
+  if (!el || !_pcSelectedBuilding || !_pcSelectedUnit) return;
+  var area = BUILDING_DATA[_pcSelectedBuilding][_pcSelectedUnit].area;
+  if (price > 0 && area > 0) {
+    el.textContent = (Math.round(price / area * 10) / 10).toFixed(1) + ' 万元/㎡';
+  } else {
+    el.textContent = '— 万元/㎡';
+  }
+}
 function closePriceCalc() {
   document.getElementById('detail-overlay').style.display = 'none';
-  _pcCurrentId = null;
+  _pcCurrentId = null; _pcOnSave = null;
+  _pcSelectedBuilding = null; _pcSelectedUnit = null;
 }
-
 function savePriceCalc() {
   var cid = _pcCurrentId;
   if (!cid) { toast('客户ID无效', 'error'); return; }
-  var building = (document.getElementById('pc-building') || { value: '' }).value;
-  var price = (document.getElementById('pc-price') || { value: '' }).value.trim();
+  if (!_pcSelectedBuilding || !_pcSelectedUnit) { toast('请选择楼栋和户型', 'error'); return; }
+  var price = parseFloat((document.getElementById('pc-price') || {}).value) || 0;
+  if (!price || price <= 0) { toast('请输入有效的总价', 'error'); return; }
+  var area = BUILDING_DATA[_pcSelectedBuilding][_pcSelectedUnit].area;
+  var unitPrice = Math.round(price / area * 10) / 10;
   var c = DB.customers.find(function(x) { return x.id === cid; });
   if (!c) return;
-  if (!building && !price) { toast('请至少选择房源或输入价格', 'error'); return; }
   c.calculated = true;
-  c.calculatedPrice = { building: building, price: price, date: new Date().toISOString().slice(0, 10) };
+  c.calculatedPrice = { building: _pcSelectedBuilding, unit: _pcSelectedUnit, area: area, price: price, unitPrice: unitPrice, date: new Date().toISOString().slice(0, 10) };
   saveDB();
   closePriceCalc();
-  openDetail(cid);
-  toast('算价结果已保存', 'success');
+  if (_pcOnSave) { _pcOnSave(cid); }
+  else { openDetail(cid); }
+  toast('算价已保存：' + unitPrice.toFixed(1) + '万元/㎡', 'success');
 }
 
 // ============================================================
@@ -1882,7 +2052,7 @@ function openForm(prefill, customer) {
       }).join('') +
     '</div></div>' +
     '<div class="form-group"><label class="form-label">客户等级</label><div class="radio-group" id="f-level-group">' +
-      ['A','B','C','D'].map(function(lv) {
+      ['A','B','C+','C','C-','D'].map(function(lv) {
         var checked = (customer && customer.level === lv) ? 'checked' : (!customer && lv === 'C' ? 'checked' : '');
         return '<label class="radio-option' + ((customer && customer.level === lv) || (!customer && lv === 'C') ? ' active' : '') + '"><input type="radio" name="f-level" value="' + lv + '" ' + checked + ' hidden>' + lv + '级</label>';
       }).join('') +
@@ -2019,11 +2189,16 @@ function submitForm() {
   } else {
     DB.customers.push(customerData);
   }
+  var newId = customerData.id;
   saveDB();
   toast(editingCustomer ? '修改已保存' : '客户添加成功', 'success');
   closeForm();
   renderCustomerList();
   renderWorkbench();
+  // If new customer with 算价=是, open price calculator
+  if (!editingCustomer && customerData.calculated) {
+    setTimeout(function() { openPriceCalc(newId); }, 200);
+  }
 }
 
 function closeForm() {
@@ -2067,6 +2242,68 @@ function navigateTo(tab) {
 // ============================================================
 // 12. WORKBENCH STAT LIST OVERLAY
 // ============================================================
+function showTeamTimeOptions(type, label) {
+  var todayStr = today();
+  var now = new Date();
+  var html = '<div id="time-options-overlay" style="position:fixed;inset:0;z-index:310;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);padding:16px;" onclick="if(event.target===this)document.getElementById(\'time-options-overlay\').remove()">' +
+    '<div style="background:#fff;border-radius:16px;width:100%;max-width:300px;overflow:hidden;">' +
+      '<div style="padding:16px 20px;background:var(--gold);color:#fff;font-weight:700;font-size:15px;">📊 ' + label + '时段筛选</div>' +
+      '<div style="padding:16px;">' +
+        '<div onclick="showTimeFiltered(\'' + type + '\',\'month\',\'' + label + '·本月\')" style="cursor:pointer;padding:12px 16px;margin-bottom:8px;background:var(--card);border:2px solid var(--border);border-radius:10px;text-align:center;font-size:15px;font-weight:600;color:var(--text);">📅 本月' + label + '</div>' +
+        '<div onclick="showTimeFiltered(\'' + type + '\',\'week\',\'' + label + '·本周\')" style="cursor:pointer;padding:12px 16px;margin-bottom:8px;background:var(--card);border:2px solid var(--border);border-radius:10px;text-align:center;font-size:15px;font-weight:600;color:var(--text);">📆 本周' + label + '</div>' +
+        '<div onclick="showTimeFiltered(\'' + type + '\',\'day\',\'' + label + '·今日\')" style="cursor:pointer;padding:12px 16px;margin-bottom:8px;background:var(--card);border:2px solid var(--border);border-radius:10px;text-align:center;font-size:15px;font-weight:600;color:var(--text);">📌 今日' + label + '</div>' +
+        '<div onclick="showTimeFiltered(\'' + type + '\',\'all\',\'' + label + '·全部\')" style="cursor:pointer;padding:12px 16px;background:var(--card);border:2px solid var(--gold);border-radius:10px;text-align:center;font-size:15px;font-weight:600;color:var(--gold);">📋 全部' + label + '</div>' +
+      '</div></div></div>';
+  var overlay = document.getElementById('detail-overlay');
+  overlay.innerHTML = html;
+  overlay.style.display = 'block';
+}
+
+function showTimeFiltered(type, period, label) {
+  document.getElementById('detail-overlay').style.display = 'none';
+  var todayStr = today();
+  var allCs = DB.customers.filter(function(c) { return !c.inPool; });
+
+  // Determine date range
+  var startDate = '';
+  var now = new Date();
+  if (period === 'month') {
+    startDate = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
+  } else if (period === 'week') {
+    var dow = now.getDay() || 7;
+    var mon = new Date(now);
+    mon.setDate(now.getDate() - dow + 1);
+    startDate = fDate(mon);
+  } else if (period === 'day') {
+    startDate = todayStr;
+  }
+
+  var filtered;
+  if (period === 'all') {
+    filtered = allCs;
+  } else if (type === 'visit') {
+    // Filter by visit time within period
+    filtered = allCs.filter(function(c) {
+      return c.visitTime && c.visitTime.slice(0,10) >= startDate;
+    });
+  } else if (type === 'deal') {
+    // Filter by deal date within period
+    filtered = allCs.filter(function(c) {
+      return (c.dealStatus === '签约' || c.dealStatus === '认购') && c.dealDate && c.dealDate >= startDate;
+    });
+  }
+
+  // Sort by followup date descending
+  filtered.sort(function(a, b) {
+    var da = a.followUpDate || '0000-00-00';
+    var db = b.followUpDate || '0000-00-00';
+    return db.localeCompare(da);
+  });
+
+  if (filtered.length === 0) { toast('无符合条件的客户', 'info'); return; }
+  renderStatListOverlay(filtered, label + '（' + filtered.length + '人）');
+}
+
 function showConsultantCustomers(name) {
   var todayStr = today();
   var customers = DB.customers.filter(function(c) { return c.consultant === name && !c.inPool; });
@@ -2098,7 +2335,9 @@ function showStatList(shown, label) {
   else if (label === '正常') filtered = myCs.filter(function(c) { return !c.followUpDate || daysBetween(c.followUpDate, todayStr) <= 0; });
   else if (label === 'A级') filtered = myCs.filter(function(c) { return c.level === 'A'; });
   else if (label === 'B级') filtered = myCs.filter(function(c) { return c.level === 'B'; });
+  else if (label === 'C+级') filtered = myCs.filter(function(c) { return c.level === 'C+'; });
   else if (label === 'C级') filtered = myCs.filter(function(c) { return c.level === 'C'; });
+  else if (label === 'C-级') filtered = myCs.filter(function(c) { return c.level === 'C-'; });
   else if (label === 'D级') filtered = myCs.filter(function(c) { return c.level === 'D'; });
   else if (label === '本周新增') filtered = myCs.filter(function(c) { return c.createdAt && daysBetween(todayStr, c.createdAt.slice(0, 10)) <= 7; });
   else if (label === 'deal') filtered = myCs.filter(function(c) { return c.dealStatus === '签约' || c.dealStatus === '认购'; });
@@ -2124,7 +2363,7 @@ function renderStatListOverlay(filtered, label) {
       ? '<span style="background:rgba(46,204,113,0.15);color:var(--green);padding:2px 7px;border-radius:6px;font-size:11px;font-weight:600;">' + c.dealStatus + '</span>' : '';
     var priceTag = c.calculatedPrice && c.calculatedPrice.price
       ? '<span style="background:rgba(201,169,98,0.15);color:var(--gold);padding:2px 7px;border-radius:6px;font-size:11px;font-weight:600;">💰 ' + escHtml(c.calculatedPrice.price) + '万</span>' : '';
-    var lvlColor = { 'A': '#27AE60', 'B': '#2980B9', 'C': '#95A5A6', 'D': '#E67E22' }[c.level] || '#95A5A6';
+    var lvlColor = { 'A': '#27AE60', 'B': '#2980B9', 'C+': '#5b8c5a', 'C': '#95A5A6', 'C-': '#8b6914', 'D': '#E67E22' }[c.level] || '#95A5A6';
     cardsHtml += '<div class="customer-card" data-id="' + c.id + '" style="background:#fff;border-left:3px solid ' + lvlColor + ';">' +
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
         '<span class="level-badge ' + c.level + '">' + c.level + '</span>' +
@@ -2178,7 +2417,10 @@ function showAdminPanel() {
   html += '</div>';
 
   // Consultant list with passwords
-  html += '<div style="color:#C9A962;font-size:13px;font-weight:600;margin-bottom:6px;">👥 顾问账号列表</div>';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+    '<span style="color:#C9A962;font-size:13px;font-weight:600;">👥 顾问账号列表</span>' +
+    '<input type="text" id="consultant-search" placeholder="搜索顾问..." style="width:130px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;" oninput="renderConsultantList()">' +
+    '</div>';
   html += '<div id="consultant-list" style="max-height:400px;overflow-y:auto;margin-bottom:12px;"></div>';
 
   // Pending approvals
@@ -2218,7 +2460,10 @@ function genPwd() { return Math.random().toString(36).slice(2, 8); }
 function renderConsultantList() {
   var list = document.getElementById('consultant-list');
   if (!list) return;
+  var searchEl = document.getElementById('consultant-search');
+  var search = searchEl ? (searchEl.value || '').trim().toLowerCase() : '';
   var names = Object.keys(DEMO_ACCOUNTS).filter(function(k) { return k !== '程华军'; });
+  if (search) names = names.filter(function(n) { return n.toLowerCase().indexOf(search) !== -1; });
   if (names.length === 0) {
     list.innerHTML = '<div style="text-align:center;color:#ccc;padding:20px 0;font-size:13px;">暂无置业顾问，请添加</div>';
     return;
@@ -2336,7 +2581,7 @@ function exportCustomerSummary() {
 
   function doExport() {
     var hdrs = ['序号','姓名','年龄','电话','意向面积','意向栋数','等级','销售阶段','成交状态','成交日期','顾问','渠道','居住小区','对比项目','职业','是否算价','SOACE分析','抗性标签','解决方案','跟进日期','跟进方式','跟进记录(最近5条)','复访次数','创建日期','公共池','算价结果'];
-    var lvOrd = {A:0,B:1,C:2,D:3};
+    var lvOrd = {A:0,B:1,'C+':2,C:3,'C-':4,D:5};
     var sorted = customers.slice().sort(function(a,b) {
       if ((lvOrd[a.level]||9) !== (lvOrd[b.level]||9)) return (lvOrd[a.level]||9) - (lvOrd[b.level]||9);
       return (b.createdAt||'').localeCompare(a.createdAt||'');
@@ -2436,12 +2681,16 @@ function doLogin(name, role) {
       return;
     }
     _loginAttempts = 0;
-    DB.currentUser = { name: '程华军', role: '销售经理', isAdmin: true };
+    var token = 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+    DB.currentUser = { name: '程华军', role: '销售经理', isAdmin: true, sessionToken: token };
     if (!DB.approvedUsers) DB.approvedUsers = [];
+    if (!DB.sessions) DB.sessions = {};
+    DB.sessions['程华军'] = token;
     saveDB();
     closeLoginScreen();
     refreshNavForRole();
     enterApp();
+    startSessionCheck();
     return;
   }
 
@@ -2462,12 +2711,16 @@ function doLogin(name, role) {
   }
   _loginAttempts = 0;
   if (err) err.style.display = 'none';
-  DB.currentUser = { name: name, role: role };
+  var token = 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+  DB.currentUser = { name: name, role: role, sessionToken: token };
   if (!DB.approvedUsers) DB.approvedUsers = [];
+  if (!DB.sessions) DB.sessions = {};
+  DB.sessions[name] = token;
   saveDB();
   closeLoginScreen();
   refreshNavForRole();
   enterApp();
+  startSessionCheck();
   toast('欢迎回来，' + name, 'success');
 }
 
@@ -2484,6 +2737,32 @@ function refreshNavForRole() {
 }
 
 function enterApp() { showTab('workbench'); }
+
+var _sessionCheckTimer = null;
+function startSessionCheck() {
+  if (_sessionCheckTimer) clearInterval(_sessionCheckTimer);
+  _sessionCheckTimer = setInterval(function() {
+    if (!DB.currentUser) { if (_sessionCheckTimer) clearInterval(_sessionCheckTimer); return; }
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var db = JSON.parse(raw);
+      if (!db.sessions) return;
+      var curToken = db.sessions[DB.currentUser.name];
+      if (curToken && DB.currentUser.sessionToken && curToken !== DB.currentUser.sessionToken) {
+        forceLogout('该账号已在其他设备登录，您已被迫下线');
+      }
+    } catch(e) {}
+  }, 3000);
+}
+
+function forceLogout(msg) {
+  if (_sessionCheckTimer) { clearInterval(_sessionCheckTimer); _sessionCheckTimer = null; }
+  DB.currentUser = null;
+  saveDB();
+  alert(msg || '会话已过期，请重新登录');
+  location.reload();
+}
 
 function showRegisterForm() {
   document.getElementById('register-modal').style.display = 'flex';
@@ -2517,6 +2796,8 @@ function submitRegister() {
 
 function doLogout() {
   confirmDlg('退出登录', '确定退出当前账号吗？', function() {
+    if (_sessionCheckTimer) { clearInterval(_sessionCheckTimer); _sessionCheckTimer = null; }
+    if (DB.currentUser && DB.sessions) { delete DB.sessions[DB.currentUser.name]; }
     DB.currentUser = null;
     saveDB();
     document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
