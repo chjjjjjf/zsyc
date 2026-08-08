@@ -457,6 +457,8 @@ body { display: flex; flex-direction: column; }
 <div id="admin-panel-overlay" class="hidden" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99997;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;"></div>
 
 <!-- =============================================================== -->
+<!-- Supabase Sync -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <!-- SCRIPT -->
 <!-- =============================================================== -->
 <script>
@@ -466,6 +468,14 @@ body { display: flex; flex-direction: column; }
 // 0. UTILITIES (defined first so everything below can use them)
 // ============================================================
 var STORAGE_KEY = 'yuchen_crm_v3';
+
+// ============================================================
+// SUPABASE CONFIG (set both to enable cross-device sync)
+// ============================================================
+var SUPABASE_URL = 'gzlyoiaicpltikhhdjul';
+var SUPABASE_ANON_KEY = 'sb_publishable_27AUN3ohA_hcaCvoltjuAA_qGSgJ0gV';
+var SYNC_DEBOUNCE_MS = 300;
+var SYNC_ENABLED = false;
 
 function uuid() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -653,10 +663,23 @@ function makeDemo() {
 // ============================================================
 var DB = { version: 3.3, currentUser: null, customers: [], approvedUsers: [], pendingUsers: [], accounts: {}, adminCode: 'yuchen2026' };
 
+// Sync state
+var _syncClient = null;
+var _syncDeviceId = '';
+var _syncChannel = null;
+var _lastSyncedRevision = 0;
+var _lastWriteTime = 0;
+var _writeTimer = null;
+var _applyingRemote = false;
+var _syncReady = false;
+var _syncRetryTimer = null;
+var _retryCount = 0;
+
 function saveDB() {
   DB.accounts = DEMO_ACCOUNTS;
   DB.adminCode = ADMIN_CODE;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e) {}
+  if (SYNC_ENABLED) syncToRemote();
 }
 
 function loadDB() {
@@ -691,6 +714,160 @@ function loadDB() {
     DB.customers = makeDemo();
     saveDB();
   }
+}
+
+// ============================================================
+// 2b. SUPABASE SYNC LAYER
+// ============================================================
+function initSync() {
+  _syncDeviceId = localStorage.getItem('_sync_device_id');
+  if (!_syncDeviceId) {
+    _syncDeviceId = 'dev-' + uuid();
+    try { localStorage.setItem('_sync_device_id', _syncDeviceId); } catch(e) {}
+  }
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+  try {
+    _syncClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    SYNC_ENABLED = true;
+  } catch(e) { console.warn('[Sync] Client init failed:', e.message); return; }
+  pullRemoteState(function() {
+    _syncReady = true;
+    subscribeToRemote();
+  });
+}
+
+function pullRemoteState(callback) {
+  if (!_syncClient) { if (callback) callback(); return; }
+  _syncClient
+    .from('crm_state')
+    .select('data, revision, updated_by')
+    .eq('id', 1)
+    .maybeSingle()
+    .then(function(res) {
+      if (res.error) { console.warn('[Sync] Pull failed:', res.error.message); scheduleRetry(); if (callback) callback(); return; }
+      if (!res.data || !res.data.data) { pushFullState(); if (callback) callback(); return; }
+      var remote = res.data;
+      if (remote.revision <= _lastSyncedRevision) { if (callback) callback(); return; }
+      _applyingRemote = true;
+      try { mergeRemoteData(remote.data); _lastSyncedRevision = remote.revision; } finally { _applyingRemote = false; }
+      if (callback) callback();
+    })
+    .catch(function(err) { console.warn('[Sync] Pull error:', err.message); if (callback) callback(); });
+}
+
+function mergeRemoteData(remoteData) {
+  var localUser = DB.currentUser;
+  var localToken = localUser ? localUser.sessionToken : null;
+  DB = remoteData;
+  if (!DB.customers) DB.customers = [];
+  if (!DB.approvedUsers) DB.approvedUsers = [];
+  if (!DB.pendingUsers) DB.pendingUsers = [];
+  if (!DB.accounts) DB.accounts = {};
+  if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
+  if (!DB.soldUnits) DB.soldUnits = {};
+  if (!DB.sessions) DB.sessions = {};
+  if (DB.version == null) DB.version = 3.3;
+  DB.currentUser = localUser;
+  if (localUser && localToken) DB.currentUser.sessionToken = localToken;
+  // Restore accounts & admin code from remote
+  if (DB.accounts && Object.keys(DB.accounts).length > 0) { Object.assign(DEMO_ACCOUNTS, DB.accounts); }
+  if (DB.adminCode) { ADMIN_CODE = DB.adminCode; }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e) {}
+  if (localUser) renderAll();
+}
+
+function pushFullState() {
+  if (!_syncClient || _applyingRemote || !_syncReady) return;
+  var payload = JSON.parse(JSON.stringify(DB));
+  delete payload.currentUser;
+  _syncClient
+    .from('crm_state')
+    .upsert({ id: 1, data: payload, updated_by: (DB.currentUser ? DB.currentUser.name + '/' : '') + _syncDeviceId, updated_at: new Date().toISOString(), revision: _lastSyncedRevision + 1 }, { onConflict: 'id' })
+    .then(function(res) {
+      if (res.error) { console.warn('[Sync] Push failed:', res.error.message); return; }
+    })
+    .catch(function(err) { console.warn('[Sync] Push error:', err.message); });
+}
+
+function syncToRemote() {
+  if (!SYNC_ENABLED || !_syncClient || _applyingRemote || !_syncReady) return;
+  var now = Date.now();
+  if (now - _lastWriteTime < SYNC_DEBOUNCE_MS) {
+    if (_writeTimer) clearTimeout(_writeTimer);
+    _writeTimer = setTimeout(function() { _lastWriteTime = Date.now(); pushFullState(); }, SYNC_DEBOUNCE_MS);
+    return;
+  }
+  _lastWriteTime = now;
+  pushFullState();
+}
+
+function subscribeToRemote() {
+  if (!_syncClient) return;
+  if (_syncChannel) { _syncClient.removeChannel(_syncChannel); _syncChannel = null; }
+  _syncChannel = _syncClient
+    .channel('crm-state-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'crm_state', filter: 'id=eq.1' }, function(payload) { handleRemoteChange(payload); })
+    .subscribe(function(status) {
+      if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+        setTimeout(function() { if (_syncClient) subscribeToRemote(); }, 5000);
+      }
+    });
+}
+
+function handleRemoteChange(payload) {
+  if (_applyingRemote) return;
+  if (!payload || !payload.new || !payload.new.data) return;
+  var parts = (payload.new.updated_by || '').split('/');
+  var remoteDeviceId = parts[parts.length - 1];
+  if (remoteDeviceId === _syncDeviceId) return;
+  var remoteRev = payload.new.revision || 0;
+  if (remoteRev <= _lastSyncedRevision) return;
+  _applyingRemote = true;
+  try { mergeRemoteData(payload.new.data); _lastSyncedRevision = remoteRev; } finally { _applyingRemote = false; }
+}
+
+function syncSessions() {
+  if (!_syncClient || !DB.currentUser) return;
+  _syncClient
+    .from('crm_sessions')
+    .upsert({ team_id: 1, user_name: DB.currentUser.name, session_token: DB.currentUser.sessionToken, created_at: new Date().toISOString() }, { onConflict: 'team_id, user_name' })
+    .then(function(res) { if (res.error) console.warn('[Session] Sync failed:', res.error.message); });
+}
+
+function checkRemoteSession() {
+  if (!_syncClient || !DB.currentUser) return;
+  _syncClient
+    .from('crm_sessions')
+    .select('session_token')
+    .eq('team_id', 1)
+    .eq('user_name', DB.currentUser.name)
+    .maybeSingle()
+    .then(function(res) {
+      if (res.error || !res.data) return;
+      if (res.data.session_token !== DB.currentUser.sessionToken) { forceLogout('该账号已在其他设备登录，您已被迫下线'); }
+    });
+}
+
+function deleteRemoteSession(name) {
+  if (!_syncClient) return;
+  _syncClient
+    .from('crm_sessions')
+    .delete()
+    .eq('team_id', 1)
+    .eq('user_name', name)
+    .then(function(res) { if (res.error) console.warn('[Session] Delete failed:', res.error.message); });
+}
+
+function scheduleRetry() {
+  if (_syncRetryTimer) return;
+  if (_retryCount >= 10) { console.warn('[Sync] Max retries reached'); return; }
+  var delay = Math.min(1000 * Math.pow(2, _retryCount), 30000);
+  _retryCount++;
+  _syncRetryTimer = setTimeout(function() {
+    _syncRetryTimer = null;
+    pullRemoteState(function() { if (_syncReady) _retryCount = 0; });
+    if (_syncReady && !_syncChannel) subscribeToRemote();
+  }, delay);
 }
 
 // === Customer Access Helpers ===
@@ -2739,6 +2916,7 @@ function doLogin(name, role) {
     if (!DB.sessions) DB.sessions = {};
     DB.sessions['程华军'] = token;
     saveDB();
+    if (SYNC_ENABLED) syncSessions();
     closeLoginScreen();
     refreshNavForRole();
     enterApp();
@@ -2769,6 +2947,7 @@ function doLogin(name, role) {
   if (!DB.sessions) DB.sessions = {};
   DB.sessions[name] = token;
   saveDB();
+  if (SYNC_ENABLED) syncSessions();
   closeLoginScreen();
   refreshNavForRole();
   enterApp();
@@ -2805,11 +2984,13 @@ function startSessionCheck() {
         forceLogout('该账号已在其他设备登录，您已被迫下线');
       }
     } catch(e) {}
+    if (SYNC_ENABLED) checkRemoteSession();
   }, 3000);
 }
 
 function forceLogout(msg) {
   if (_sessionCheckTimer) { clearInterval(_sessionCheckTimer); _sessionCheckTimer = null; }
+  if (_syncChannel && _syncClient) { _syncClient.removeChannel(_syncChannel); _syncChannel = null; }
   DB.currentUser = null;
   saveDB();
   alert(msg || '会话已过期，请重新登录');
@@ -2849,8 +3030,10 @@ function submitRegister() {
 function doLogout() {
   confirmDlg('退出登录', '确定退出当前账号吗？', function() {
     if (_sessionCheckTimer) { clearInterval(_sessionCheckTimer); _sessionCheckTimer = null; }
+    var _logoutName = DB.currentUser ? DB.currentUser.name : null;
     if (DB.currentUser && DB.sessions) { delete DB.sessions[DB.currentUser.name]; }
     DB.currentUser = null;
+    if (SYNC_ENABLED && _logoutName) deleteRemoteSession(_logoutName);
     saveDB();
     document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
     document.getElementById('detail-page').classList.remove('active');
@@ -2869,6 +3052,7 @@ function doLogout() {
 // ============================================================
 function init() {
   loadDB();
+  initSync();
 
   // URL param prefill
   var autoName = (function() {
