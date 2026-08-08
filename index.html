@@ -78,26 +78,27 @@ body { display: flex; flex-direction: column; }
 .section-title { font-size: 14px; font-weight: 600; color: var(--text-dim); padding: 8px 0 10px; display: flex; align-items: center; justify-content: space-between; }
 
 /* CUSTOMER CARD */
-.customer-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s; }
+.customer-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s; }
 .customer-card:active { border-color: var(--gold); }
 .card-row1 { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.card-name { font-size: 16px; font-weight: 600; color: var(--text); flex: 1; }
-.card-phone { font-size: 13px; color: var(--text-dim); }
-.level-badge { display: inline-block; min-width: 24px; height: 22px; border-radius: 6px; text-align: center; line-height: 22px; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; padding: 0 3px; background: #555; }
-.level-badge.A { background: #1a7a3f; font-size: 13px; }
-.level-badge.B { background: #2469b5; font-size: 13px; }
+.card-name { font-size: 17px; font-weight: 600; color: var(--text); flex: 1; }
+.card-phone { font-size: 14px; color: var(--text-dim); }
+.level-badge { display: inline-block; min-width: 26px; height: 24px; border-radius: 6px; text-align: center; line-height: 24px; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; padding: 0 3px; background: #555; }
+.level-badge.A { background: #1a7a3f; font-size: 14px; }
+.level-badge.B { background: #2469b5; font-size: 14px; }
 .level-badge.C\+ { background: #5b8c5a; }
-.level-badge.C { background: #555; font-size: 13px; }
+.level-badge.C { background: #555; font-size: 14px; }
 .level-badge.C- { background: #8b6914; }
-.level-badge.D { background: #c06010; font-size: 13px; }
+.level-badge.D { background: #c06010; font-size: 14px; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.tag { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 6px; font-size: 11px; }
+.tag { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 6px; font-size: 12px; }
 .tag-overdue { background: rgba(231,76,60,0.2); color: var(--red); }
 .tag-following { background: rgba(46,204,113,0.2); color: var(--green); }
 .tag-new { background: rgba(201,169,98,0.2); color: var(--gold); }
 .tag-due { background: rgba(243,156,18,0.2); color: var(--yellow); }
-.card-meta { font-size: 12px; color: var(--text-dim); display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
-.card-note { font-size: 12px; color: var(--text-dim); background: var(--card2); border-radius: 6px; padding: 6px 8px; margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.card-meta { font-size: 13px; color: var(--text-dim); display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
+.card-note { font-size: 13px; color: var(--text-dim); background: var(--card2); border-radius: 6px; padding: 6px 8px; margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.revisit-badge { display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px; border-radius: 8px; font-size: 12px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #ff6b35, #ff3d00); flex-shrink: 0; }
 
 /* SEARCH */
 .search-bar { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -121,7 +122,7 @@ body { display: flex; flex-direction: column; }
 .funnel-rate { font-size: 10px; color: var(--text-dim); margin-left: 4px; }
 
 /* STAGE BADGES */
-.stage-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.stage-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
 .stage-问询 { background: rgba(150,150,150,0.15); color: #666; border: 1px solid rgba(150,150,150,0.4); }
 .stage-来访 { background: rgba(52,152,219,0.15); color: #2980b9; border: 1px solid rgba(52,152,219,0.4); }
 .stage-认筹 { background: rgba(201,169,98,0.15); color: var(--gold); border: 1px solid rgba(201,169,98,0.4); }
@@ -129,7 +130,7 @@ body { display: flex; flex-direction: column; }
 .stage-签约 { background: rgba(46,204,113,0.15); color: #1e9e5a; border: 1px solid rgba(46,204,113,0.4); }
 
 /* METHOD TAGS */
-.method-tag { display: inline-flex; padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; background: var(--card2); color: var(--text-dim); margin-right: 4px; }
+.method-tag { display: inline-flex; padding: 1px 6px; border-radius: 8px; font-size: 11px; font-weight: 600; background: var(--card2); color: var(--text-dim); margin-right: 4px; }
 .method-来电 { background: rgba(52,152,219,0.12); color: #2980b9; }
 .method-来访 { background: rgba(46,204,113,0.12); color: #1e9e5a; }
 .method-去电 { background: rgba(230,126,34,0.12); color: #d35400; }
@@ -472,7 +473,7 @@ var STORAGE_KEY = 'yuchen_crm_v3';
 // ============================================================
 // SUPABASE CONFIG (set both to enable cross-device sync)
 // ============================================================
-var SUPABASE_URL = 'gzlyoiaicpltikhhdjul';
+var SUPABASE_URL = 'https://gzlyoiaicpltikhhdjul.supabase.co';
 var SUPABASE_ANON_KEY = 'sb_publishable_27AUN3ohA_hcaCvoltjuAA_qGSgJ0gV';
 var SYNC_DEBOUNCE_MS = 300;
 var SYNC_ENABLED = false;
@@ -1131,19 +1132,22 @@ function renderCustomerCard(c) {
   if (c.channel) infoParts.push('📌 ' + escRaw(c.channel));
   if (c.area) infoParts.push('📐 ' + escRaw(c.area) + '㎡');
   if (c.competitor) infoParts.push('⚖ ' + escRaw(c.competitor));
-  if (infoParts.length > 0) infoRow = '<div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:8px;">' + infoParts.map(function(p) { return '<span>' + p + '</span>'; }).join('') + '</div>';
+  if (infoParts.length > 0) infoRow = '<div style="font-size:13px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:8px;">' + infoParts.map(function(p) { return '<span>' + p + '</span>'; }).join('') + '</div>';
 
   var stageInfo = SALES_STAGES.find(function(s) { return s.key === c.salesStage; }) || SALES_STAGES[0];
   var followupMeta = '';
   if (c.followUpDate) {
     var fd = daysBetween(c.followUpDate, today());
-    followupMeta = '<span style="font-size:10px;color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>';
+    followupMeta = '<span style="font-size:11px;color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>';
   }
+
+  var revisitHtml = c.revisitCount ? '<span class="revisit-badge">🔥 ' + c.revisitCount + '次</span>' : '';
 
   return '<div class="customer-card" data-id="' + c.id + '">' +
     '<div class="card-row1">' +
       '<span class="level-badge ' + c.level + '">' + c.level + '</span>' +
       '<div class="card-name">' + escRaw(c.name) + '</div>' +
+      revisitHtml +
       '<div class="card-phone">' + escRaw(maskPhone(c.phone)) + '</div>' +
     '</div>' +
     infoRow +
@@ -1156,7 +1160,6 @@ function renderCustomerCard(c) {
       '<span>' + (c.createdAt ? c.createdAt.slice(5, 10) : '') + ' 录入</span>' +
       (c.visitTime ? '<span>' + fDate(c.visitTime) + ' 接待</span>' : '') +
       (c.residence ? '<span>🏠 ' + escRaw(c.residence) + '</span>' : '') +
-      (c.revisitCount ? '<span>🔄 ' + c.revisitCount + '次复访</span>' : '') +
       followupMeta +
     '</div>' +
   '</div>';
@@ -1278,7 +1281,8 @@ function renderWorkbench() {
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
       if (c.area) infoExtras.push('📐' + escRaw(c.area) + '㎡');
       if (c.calculatedPrice && c.calculatedPrice.price) infoExtras.push('💰' + escHtml(c.calculatedPrice.price) + '万');
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escRaw(c.name) + '</div><div style="font-size:11px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '需今日跟进') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔥 今日</span></div>';
+      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">🔥' + c.revisitCount + '</span>' : '';
+      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div><div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '需今日跟进') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔥 今日</span></div>';
     });
     html += '</div></div>';
   }
@@ -1291,7 +1295,8 @@ function renderWorkbench() {
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
       if (c.area) infoExtras.push('📐' + escRaw(c.area) + '㎡');
       if (c.competitor) infoExtras.push('⚖' + escRaw(c.competitor));
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escRaw(c.name) + '</div><div style="font-size:11px;color:var(--text-dim);">逾期 ' + d + ' 天 · ' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-overdue">⏸ ' + d + '天</span></div>';
+      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">🔥' + c.revisitCount + '</span>' : '';
+      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div><div style="font-size:12px;color:var(--text-dim);">逾期 ' + d + ' 天 · ' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-overdue">⏸ ' + d + '天</span></div>';
     });
     html += '</div></div>';
   }
@@ -1305,7 +1310,8 @@ function renderWorkbench() {
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
       if (c.area) infoExtras.push('📐' + escRaw(c.area) + '㎡');
       if (c.competitor) infoExtras.push('⚖' + escRaw(c.competitor));
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escRaw(c.name) + '</div><div style="font-size:11px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔔 ' + label + '</span></div>';
+      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">🔥' + c.revisitCount + '</span>' : '';
+      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div><div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔔 ' + label + '</span></div>';
     });
     html += '</div></div>';
   }
@@ -1578,7 +1584,7 @@ function renderAnalysis() {
     var items = fus.length > 0
       ? fus.map(function(f) { return '· ' + (f.time ? f.time.slice(0, 10) : '') + ' ' + (f.method || '') + '：' + (f.content || '（无备注）'); }).join('<br>')
       : '暂无跟进记录';
-    return '<div style="margin:-4px 12px 10px;padding:8px 10px;background:#fff8ec;border-left:3px solid #C9A962;border-radius:0 0 6px 6px;font-size:12px;color:#7a5c10;line-height:1.6;">🔁 复访 <strong>' + rc + '</strong> 次　跟进记录：<br>' + items + '</div>';
+    return '<div style="margin:-4px 12px 10px;padding:8px 10px;background:#fff8ec;border-left:3px solid #ff6b35;border-radius:0 0 6px 6px;font-size:13px;color:#7a5c10;line-height:1.6;">🔥 复访 <strong>' + rc + '</strong> 次　跟进记录：<br>' + items + '</div>';
   }
 
   var listHtml = customers.length > 0
@@ -2548,7 +2554,7 @@ function renderStatListOverlay(filtered, label) {
 
   var stageTag = function(s) {
     var m = { '问询': '问', '来访': '访', '认筹': '筹', '认购': '购', '签约': '签' };
-    return '<span style="background:rgba(201,169,98,0.15);color:var(--gold);padding:2px 7px;border-radius:6px;font-size:11px;font-weight:600;">' + (m[s] || s) + '</span>';
+    return '<span style="background:rgba(201,169,98,0.15);color:var(--gold);padding:2px 7px;border-radius:6px;font-size:12px;font-weight:600;">' + (m[s] || s) + '</span>';
   };
 
   var cardsHtml = '';
@@ -2562,41 +2568,43 @@ function renderStatListOverlay(filtered, label) {
     if (c.channel) infoParts.push('<span>📌 ' + escRaw(c.channel) + '</span>');
     if (c.area) infoParts.push('<span>📐 ' + escRaw(c.area) + '㎡</span>');
     if (c.competitor) infoParts.push('<span>⚖ ' + escRaw(c.competitor) + '</span>');
-    var infoRow = infoParts.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:6px;">' + infoParts.join('') + '</div>' : '';
+    var infoRow = infoParts.length > 0 ? '<div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:6px;">' + infoParts.join('') + '</div>' : '';
 
     // Price tag
     var priceInfo = '';
     if (c.calculatedPrice && c.calculatedPrice.price) {
-      priceInfo = '<span style="font-size:11px;color:var(--gold);font-weight:600;">💰 ' + escHtml(c.calculatedPrice.price) + '万' + (c.calculatedPrice.unitPrice != null ? ' · ' + escHtml(c.calculatedPrice.unitPrice) + '万/㎡' : '') + '</span>';
+      priceInfo = '<span style="font-size:12px;color:var(--gold);font-weight:600;">💰 ' + escHtml(c.calculatedPrice.price) + '万' + (c.calculatedPrice.unitPrice != null ? ' · ' + escHtml(c.calculatedPrice.unitPrice) + '万/㎡' : '') + '</span>';
     }
 
     // Deal tag
     var dealTag = c.dealStatus && c.dealStatus !== '未成交'
-      ? '<span style="background:rgba(46,204,113,0.15);color:var(--green);padding:2px 7px;border-radius:6px;font-size:11px;font-weight:600;">' + c.dealStatus + '</span>' : '';
+      ? '<span style="background:rgba(46,204,113,0.15);color:var(--green);padding:2px 7px;border-radius:6px;font-size:12px;font-weight:600;">' + c.dealStatus + '</span>' : '';
 
     // Consultant
-    var consultantHtml = isManager ? '<span style="font-size:10px;color:var(--gold);font-weight:600;">顾问：' + escRaw(c.consultant) + '</span>' : '';
+    var consultantHtml = isManager ? '<span style="font-size:11px;color:var(--gold);font-weight:600;">顾问：' + escRaw(c.consultant) + '</span>' : '';
 
     // Followup date
     var followupMeta = '';
     if (c.followUpDate) {
       var fd = daysBetween(c.followUpDate, today());
-      followupMeta = '<span style="font-size:10px;color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>';
+      followupMeta = '<span style="font-size:11px;color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>';
     }
+
+    var revisitHtml = c.revisitCount ? '<span class="revisit-badge">🔥 ' + c.revisitCount + '次</span>' : '';
 
     cardsHtml += '<div class="customer-card" data-id="' + c.id + '" style="background:#fff;border-left:3px solid ' + lvlColor + ';">' +
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
         '<span class="level-badge ' + c.level + '">' + c.level + '</span>' +
-        '<span style="font-size:14px;font-weight:600;color:#1a1a1a;flex:1;">' + escRaw(c.name) + '</span>' +
-        '<span style="font-size:11px;color:var(--text-dim);">' + escHtml(phoneMask) + '</span>' +
+        '<span style="font-size:15px;font-weight:600;color:#1a1a1a;flex:1;">' + escRaw(c.name) + '</span>' +
+        revisitHtml +
+        '<span style="font-size:12px;color:var(--text-dim);">' + escHtml(phoneMask) + '</span>' +
       '</div>' +
       infoRow +
       '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">' +
         stageTag(c.salesStage || '问询') + dealTag + priceInfo + consultantHtml +
       '</div>' +
-      '<div style="margin-top:4px;font-size:10px;color:var(--text-dim);display:flex;gap:8px;flex-wrap:wrap;">' +
+      '<div style="margin-top:4px;font-size:11px;color:var(--text-dim);display:flex;gap:8px;flex-wrap:wrap;">' +
         (c.residence ? '<span>🏠 ' + escRaw(c.residence) + '</span>' : '') +
-        (c.revisitCount ? '<span>🔄 ' + c.revisitCount + '次</span>' : '') +
         followupMeta +
       '</div>' +
     '</div>';
