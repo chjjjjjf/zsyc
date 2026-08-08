@@ -84,12 +84,12 @@ body { display: flex; flex-direction: column; }
 .card-name { font-size: 17px; font-weight: 600; color: var(--text); flex: 1; }
 .card-phone { font-size: 14px; color: var(--text-dim); }
 .level-badge { display: inline-block; min-width: 26px; height: 24px; border-radius: 6px; text-align: center; line-height: 24px; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; padding: 0 3px; background: #555; }
-.level-badge.A { background: #1a7a3f; font-size: 14px; }
-.level-badge.B { background: #2469b5; font-size: 14px; }
-.level-badge.C\+ { background: #5b8c5a; }
-.level-badge.C { background: #555; font-size: 14px; }
-.level-badge.C- { background: #8b6914; }
-.level-badge.D { background: #c06010; font-size: 14px; }
+.level-badge.A { background: #e74c3c; font-size: 14px; }
+.level-badge.B { background: #e67e22; font-size: 14px; }
+.level-badge.C\+ { background: #c9a962; }
+.level-badge.C { background: #888; font-size: 14px; }
+.level-badge.C- { background: #555; }
+.level-badge.D { background: #1a1a1a; font-size: 14px; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .tag { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 6px; font-size: 12px; }
 .tag-overdue { background: rgba(231,76,60,0.2); color: var(--red); }
@@ -517,6 +517,12 @@ function maskPhone(phone) {
   phone = String(phone).replace(/\D/g,'');
   if (phone.length >= 7) return phone.slice(0,3) + '****' + phone.slice(-4);
   return phone;
+}
+function fmtUnit(u) {
+  if (!u || u.length < 4) return u || '';
+  var floor = u.slice(0, 2);
+  var type = u.slice(2);
+  return (floor[0] === '0' ? floor[1] : floor) + type;
 }
 
 // === Toast ===
@@ -1126,7 +1132,7 @@ function renderCustomerCard(c) {
   if (c.calculatedPrice && c.calculatedPrice.price) {
     var pp = c.calculatedPrice;
     var parts = [];
-    if (pp.building || pp.unit) parts.push((pp.building || '') + ' ' + (pp.unit || ''));
+    if (pp.building || pp.unit) parts.push((pp.building || '') + ' ' + fmtUnit(pp.unit || ''));
     if (pp.area) parts.push(pp.area + '㎡');
     parts.push(pp.price + '元');
     if (pp.unitPrice != null) parts.push(pp.unitPrice.toFixed(2) + '元/㎡');
@@ -1137,8 +1143,8 @@ function renderCustomerCard(c) {
   var infoRow = '';
   var infoParts = [];
   if (c.channel) infoParts.push('📌 ' + escRaw(c.channel));
-  if (c.area) infoParts.push('需求：' + escRaw(c.area) + '㎡');
-  if (c.competitor) infoParts.push('对比：' + escRaw(c.competitor));
+  if (c.area) infoParts.push('<span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">需</span> ' + escRaw(c.area) + '㎡');
+  if (c.competitor) infoParts.push('<span style="background:rgba(39,174,96,0.15);color:#27ae60;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">比</span> ' + escRaw(c.competitor));
   if (infoParts.length > 0) infoRow = '<div style="font-size:13px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:8px;">' + infoParts.map(function(p) { return '<span>' + p + '</span>'; }).join('') + '</div>';
 
   var stageInfo = SALES_STAGES.find(function(s) { return s.key === c.salesStage; }) || SALES_STAGES[0];
@@ -1287,10 +1293,10 @@ function renderWorkbench() {
     todayFollowups.slice(0, 5).forEach(function(c) {
       var infoExtras = [];
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
-      if (c.area) infoExtras.push('需求：' + escRaw(c.area) + '㎡');
+      if (c.area) infoExtras.push('<span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">需</span> ' + escRaw(c.area) + '㎡');
       if (c.calculatedPrice && c.calculatedPrice.price) {
         var pp = c.calculatedPrice;
-        var pParts = [(pp.building||'') + (pp.unit||'')];
+        var pParts = [(pp.building||'') + fmtUnit(pp.unit||'')];
         if (pp.area) pParts.push(pp.area + '㎡');
         pParts.push(pp.price + '元');
         if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
@@ -1310,11 +1316,11 @@ function renderWorkbench() {
       var d = daysBetween(c.followUpDate, todayStr);
       var infoExtras = [];
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
-      if (c.area) infoExtras.push('需求：' + escRaw(c.area) + '㎡');
-      if (c.competitor) infoExtras.push('对比：' + escRaw(c.competitor));
+      if (c.area) infoExtras.push('<span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">需</span> ' + escRaw(c.area) + '㎡');
+      if (c.competitor) infoExtras.push('<span style="background:rgba(39,174,96,0.15);color:#27ae60;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">比</span> ' + escRaw(c.competitor));
       if (c.calculatedPrice && c.calculatedPrice.price) {
         var pp = c.calculatedPrice;
-        var pParts = [(pp.building||'') + (pp.unit||'')];
+        var pParts = [(pp.building||'') + fmtUnit(pp.unit||'')];
         if (pp.area) pParts.push(pp.area + '㎡');
         pParts.push(pp.price + '元');
         if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
@@ -1335,11 +1341,11 @@ function renderWorkbench() {
       var label = d === 0 ? '今天' : Math.abs(d) + '天后';
       var infoExtras = [];
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
-      if (c.area) infoExtras.push('需求：' + escRaw(c.area) + '㎡');
-      if (c.competitor) infoExtras.push('对比：' + escRaw(c.competitor));
+      if (c.area) infoExtras.push('<span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">需</span> ' + escRaw(c.area) + '㎡');
+      if (c.competitor) infoExtras.push('<span style="background:rgba(39,174,96,0.15);color:#27ae60;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">比</span> ' + escRaw(c.competitor));
       if (c.calculatedPrice && c.calculatedPrice.price) {
         var pp = c.calculatedPrice;
-        var pParts = [(pp.building||'') + (pp.unit||'')];
+        var pParts = [(pp.building||'') + fmtUnit(pp.unit||'')];
         if (pp.area) pParts.push(pp.area + '㎡');
         pParts.push(pp.price + '元');
         if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
@@ -1400,7 +1406,7 @@ function renderSelfStats() {
     if (levelCounts[c.level] !== undefined) levelCounts[c.level]++; else levelCounts[c.level] = 1;
     if (c.channel) channelCounts[c.channel] = (channelCounts[c.channel] || 0) + 1;
   });
-  var levelColors = { A: '#2ecc71', B: '#3498db', 'C+': '#5b8c5a', C: '#888', 'C-': '#8b6914', D: '#e67e22' };
+  var levelColors = { A: '#e74c3c', B: '#e67e22', 'C+': '#c9a962', C: '#888', 'C-': '#555', D: '#1a1a1a' };
   var levelHtml = Object.keys(levelCounts).map(function(lv) {
     var cnt = levelCounts[lv];
     return '<div class="bar-row bar-clickable" style="cursor:pointer;" data-stat-bar="level" data-stat-val="' + lv + '级"><span class="bar-label" style="color:' + levelColors[lv] + '">' + lv + '级</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(cnt / total * 100) + '%;background:' + levelColors[lv] + '"></div></div><span class="bar-val">' + cnt + '人</span></div>';
@@ -1927,7 +1933,7 @@ function openDetail(id) {
 
   var priceHtml = c.calculatedPrice
     ? '<div class="info-item" style="background:rgba(201,169,98,0.08);border-left:3px solid var(--gold);"><div class="info-label" style="color:var(--gold);font-size:11px;">💰 算价结果</div><div class="info-value" style="font-size:13px;">' +
-        '<div style="margin-bottom:4px;"><b>房源：</b>' + escHtml((c.calculatedPrice.building || '') + ' ' + (c.calculatedPrice.unit || '')) + '　<b>面积：</b>' + escHtml(c.calculatedPrice.area || '') + '㎡</div>' +
+        '<div style="margin-bottom:4px;"><b>房源：</b>' + escHtml((c.calculatedPrice.building || '') + ' ' + fmtUnit(c.calculatedPrice.unit || '')) + '　<b>面积：</b>' + escHtml(c.calculatedPrice.area || '') + '㎡</div>' +
         '<div><b>总价：</b><span style="font-size:16px;color:var(--gold);font-weight:700;">' + escHtml(c.calculatedPrice.price || '') + ' 元</span>　<b>单价：</b><span style="font-size:14px;color:var(--gold);font-weight:700;">' + (c.calculatedPrice.unitPrice != null ? escHtml(c.calculatedPrice.unitPrice.toFixed(2)) + ' 元/㎡' : '—') + '</span></div>' +
         '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">算价日期：' + escHtml(c.calculatedPrice.date || '') + '</div>' +
       '</div></div>' : '';
@@ -2151,8 +2157,8 @@ function renderPriceCalc(c, ex) {
   if (_pcSelectedBuilding) {
     var bldUnits = BUILDING_DATA[_pcSelectedBuilding];
     var ukeys = Object.keys(bldUnits);
-    var col01 = ukeys.filter(function(u) { return bldUnits[u].type === '01'; });
-    var col02 = ukeys.filter(function(u) { return bldUnits[u].type === '02'; });
+    var col01 = ukeys.filter(function(u) { return bldUnits[u].type === '01'; }).sort();
+    var col02 = ukeys.filter(function(u) { return bldUnits[u].type === '02'; }).sort();
     var renderUnitCol = function(units, label) {
       var h = '<div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--text-dim);font-weight:600;margin-bottom:6px;text-align:center;">' + label + '</div>';
       if (units.length === 0) { h += '<div style="color:#ccc;text-align:center;font-size:12px;">无</div>'; }
@@ -2164,7 +2170,7 @@ function renderPriceCalc(c, ex) {
           var border = sold ? '#ddd' : (isSel ? 'var(--gold)' : '#e5e5e5');
           var color = sold ? '#bbb' : (isSel ? 'var(--gold)' : '#333');
           var cursor = sold ? 'default' : 'pointer';
-          h += '<div onclick="' + (sold ? 'return' : 'selectUnit(\'' + u + '\',\'' + c.id + '\')') + '" style="cursor:' + cursor + ';padding:8px 10px;margin-bottom:4px;background:' + bg + ';border:1.5px solid ' + border + ';border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:' + color + ';transition:all 0.15s;">' + u + '<div style="font-size:10px;font-weight:400;color:' + (sold ? '#ccc' : 'var(--text-dim)') + ';">' + bldUnits[u].area + '㎡</div></div>';
+          h += '<div onclick="' + (sold ? 'return' : 'selectUnit(\'' + u + '\',\'' + c.id + '\')') + '" style="cursor:' + cursor + ';padding:8px 10px;margin-bottom:4px;background:' + bg + ';border:1.5px solid ' + border + ';border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:' + color + ';transition:all 0.15s;">' + fmtUnit(u) + '<div style="font-size:10px;font-weight:400;color:' + (sold ? '#ccc' : 'var(--text-dim)') + ';">' + bldUnits[u].area + '㎡</div></div>';
         });
       }
       h += '</div>';
@@ -2176,7 +2182,7 @@ function renderPriceCalc(c, ex) {
   var selInfo = '';
   if (_pcSelectedBuilding && _pcSelectedUnit) {
     var uArea = BUILDING_DATA[_pcSelectedBuilding][_pcSelectedUnit].area;
-    selInfo = '<div style="background:rgba(201,169,98,0.1);border:1px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;">已选：<b style="color:var(--gold);">' + _pcSelectedBuilding + ' ' + _pcSelectedUnit + '</b>　面积：<b>' + uArea + '㎡</b></div>';
+    selInfo = '<div style="background:rgba(201,169,98,0.1);border:1px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;">已选：<b style="color:var(--gold);">' + _pcSelectedBuilding + ' ' + fmtUnit(_pcSelectedUnit) + '</b>　面积：<b>' + uArea + '㎡</b></div>';
   }
 
   var unitPriceHtml = '';
@@ -2612,7 +2618,7 @@ function renderStatListOverlay(filtered, label) {
   filtered.forEach(function(c) {
     var phoneMask = maskPhone(c.phone || '');
     var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
-    var lvlColor = { 'A': '#27AE60', 'B': '#2980B9', 'C+': '#5b8c5a', 'C': '#95A5A6', 'C-': '#8b6914', 'D': '#E67E22' }[c.level] || '#95A5A6';
+    var lvlColor = { 'A': '#e74c3c', 'B': '#e67e22', 'C+': '#c9a962', 'C': '#888', 'C-': '#555', 'D': '#1a1a1a' }[c.level] || '#888';
 
     // Consultant in header (for manager)
     var consultantHeader = isManager
@@ -2621,8 +2627,8 @@ function renderStatListOverlay(filtered, label) {
     // Info row: channel, demand area, competitor
     var infoParts = [];
     if (c.channel) infoParts.push('<span>📌 ' + escRaw(c.channel) + '</span>');
-    if (c.area) infoParts.push('<span>需求：' + escRaw(c.area) + '㎡</span>');
-    if (c.competitor) infoParts.push('<span>对比：' + escRaw(c.competitor) + '</span>');
+    if (c.area) infoParts.push('<span><span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">需</span> ' + escRaw(c.area) + '㎡</span>');
+    if (c.competitor) infoParts.push('<span><span style="background:rgba(39,174,96,0.15);color:#27ae60;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">比</span> ' + escRaw(c.competitor) + '</span>');
     var infoRow = infoParts.length > 0 ? '<div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:6px;">' + infoParts.join('') + '</div>' : '';
 
     // Price: 房源 · 面积 · 总价 · 单价
@@ -2630,7 +2636,7 @@ function renderStatListOverlay(filtered, label) {
     if (c.calculatedPrice && c.calculatedPrice.price) {
       var pp = c.calculatedPrice;
       var pParts = [];
-      if (pp.building || pp.unit) pParts.push((pp.building || '') + ' ' + (pp.unit || ''));
+      if (pp.building || pp.unit) pParts.push((pp.building || '') + ' ' + fmtUnit(pp.unit || ''));
       if (pp.area) pParts.push(pp.area + '㎡');
       pParts.push(pp.price + '元');
       if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
