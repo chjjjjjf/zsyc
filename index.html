@@ -720,20 +720,21 @@ function loadDB() {
 // ============================================================
 // 2b. SUPABASE SYNC LAYER
 // ============================================================
-function initSync() {
+function initSync(onDone) {
   _syncDeviceId = localStorage.getItem('_sync_device_id');
   if (!_syncDeviceId) {
     _syncDeviceId = 'dev-' + uuid();
     try { localStorage.setItem('_sync_device_id', _syncDeviceId); } catch(e) {}
   }
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) { if (onDone) onDone(); return; }
   try {
     _syncClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     SYNC_ENABLED = true;
-  } catch(e) { console.warn('[Sync] Client init failed:', e.message); return; }
+  } catch(e) { console.warn('[Sync] Client init failed:', e.message); if (onDone) onDone(); return; }
   pullRemoteState(function() {
     _syncReady = true;
     subscribeToRemote();
+    if (onDone) onDone();
   });
 }
 
@@ -1141,7 +1142,7 @@ function renderCustomerCard(c) {
     followupMeta = '<span style="font-size:11px;color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>';
   }
 
-  var revisitHtml = c.revisitCount ? '<span class="revisit-badge">🔥 ' + c.revisitCount + '次</span>' : '';
+  var revisitHtml = c.revisitCount ? '<span class="revisit-badge">复访🔥 ' + c.revisitCount + '次</span>' : '';
 
   return '<div class="customer-card" data-id="' + c.id + '">' +
     '<div class="card-row1">' +
@@ -1281,7 +1282,7 @@ function renderWorkbench() {
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
       if (c.area) infoExtras.push('📐' + escRaw(c.area) + '㎡');
       if (c.calculatedPrice && c.calculatedPrice.price) infoExtras.push('💰' + escHtml(c.calculatedPrice.price) + '万');
-      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">🔥' + c.revisitCount + '</span>' : '';
+      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
       html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div><div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '需今日跟进') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔥 今日</span></div>';
     });
     html += '</div></div>';
@@ -1295,7 +1296,7 @@ function renderWorkbench() {
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
       if (c.area) infoExtras.push('📐' + escRaw(c.area) + '㎡');
       if (c.competitor) infoExtras.push('⚖' + escRaw(c.competitor));
-      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">🔥' + c.revisitCount + '</span>' : '';
+      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
       html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div><div style="font-size:12px;color:var(--text-dim);">逾期 ' + d + ' 天 · ' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-overdue">⏸ ' + d + '天</span></div>';
     });
     html += '</div></div>';
@@ -1310,7 +1311,7 @@ function renderWorkbench() {
       if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
       if (c.area) infoExtras.push('📐' + escRaw(c.area) + '㎡');
       if (c.competitor) infoExtras.push('⚖' + escRaw(c.competitor));
-      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">🔥' + c.revisitCount + '</span>' : '';
+      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
       html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div><div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔔 ' + label + '</span></div>';
     });
     html += '</div></div>';
@@ -2590,7 +2591,7 @@ function renderStatListOverlay(filtered, label) {
       followupMeta = '<span style="font-size:11px;color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>';
     }
 
-    var revisitHtml = c.revisitCount ? '<span class="revisit-badge">🔥 ' + c.revisitCount + '次</span>' : '';
+    var revisitHtml = c.revisitCount ? '<span class="revisit-badge">复访🔥 ' + c.revisitCount + '次</span>' : '';
 
     cardsHtml += '<div class="customer-card" data-id="' + c.id + '" style="background:#fff;border-left:3px solid ' + lvlColor + ';">' +
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
@@ -3060,9 +3061,12 @@ function doLogout() {
 // ============================================================
 function init() {
   loadDB();
-  initSync();
+  initSync(function() {
+    initApp();
+  });
+}
 
-  // URL param prefill
+function initApp() {
   var autoName = (function() {
     var m = location.search.match(/[?&]u=([^&]+)/);
     var raw = m ? decodeURIComponent(m[1]) : '';
