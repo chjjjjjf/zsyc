@@ -1149,9 +1149,16 @@ function renderCustomerCard(c) {
 
   var stageInfo = SALES_STAGES.find(function(s) { return s.key === c.salesStage; }) || SALES_STAGES[0];
   var followupMeta = '';
-  if (c.followUpDate) {
-    var fd = daysBetween(c.followUpDate, today());
-    followupMeta = '<span style="font-size:11px;color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>';
+  if (c.followUpDate || (c.followUps && c.followUps[0])) {
+    var fuParts = [];
+    if (c.followUpDate) {
+      var fd = daysBetween(c.followUpDate, today());
+      fuParts.push('<span style="color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>');
+    }
+    if (c.followUps && c.followUps[0]) {
+      fuParts.push('<span class="method-tag method-' + c.followUps[0].method + '">' + c.followUps[0].method + '</span>');
+    }
+    followupMeta = '<span style="font-size:11px;">' + fuParts.join(' · ') + '</span>';
   }
 
   var revisitHtml = c.revisitCount ? '<span class="revisit-badge">复访🔥 ' + c.revisitCount + '次</span>' : '';
@@ -1167,7 +1174,6 @@ function renderCustomerCard(c) {
     infoRow +
     '<div class="card-tags">' + statusTag +
       '<span class="stage-badge stage-' + c.salesStage + '">' + stageInfo.icon + ' ' + c.salesStage + '</span>' +
-      (c.followUps && c.followUps[0] ? '<span class="method-tag method-' + c.followUps[0].method + '">' + c.followUps[0].method + '</span>' : '') +
       priceInfo +
     '</div>' +
     '<div class="card-meta">' +
