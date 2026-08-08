@@ -96,7 +96,9 @@ body { display: flex; flex-direction: column; }
 .tag-following { background: rgba(46,204,113,0.2); color: var(--green); }
 .tag-new { background: rgba(201,169,98,0.2); color: var(--gold); }
 .tag-due { background: rgba(243,156,18,0.2); color: var(--yellow); }
-.card-meta { font-size: 13px; color: var(--text-dim); display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
+.card-meta { font-size: 13px; color: var(--text-dim); display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; align-items: center; }
+.card-qf-btn { padding: 3px 10px; background: var(--gold); color: #111; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; margin-left: auto; transition: opacity 0.2s; }
+.card-qf-btn:active { opacity: 0.7; }
 .card-note { font-size: 13px; color: var(--text-dim); background: var(--card2); border-radius: 6px; padding: 6px 8px; margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .revisit-badge { display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px; border-radius: 8px; font-size: 12px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #ff6b35, #ff3d00); flex-shrink: 0; }
 
@@ -358,6 +360,10 @@ body { display: flex; flex-direction: column; }
 <!-- PAGES -->
 <!-- =============================================================== -->
 <div id="page-workbench" class="page">
+  <div id="wb-view-toggle" style="padding:8px 12px 0;display:flex;justify-content:flex-end;gap:6px;">
+    <button id="wb-view-list" class="cust-tab active" style="flex:none;padding:5px 14px;font-size:12px;">📋 列表</button>
+    <button id="wb-view-cal" class="cust-tab" style="flex:none;padding:5px 14px;font-size:12px;">📅 日历</button>
+  </div>
   <div class="scroll-area" id="wb-scroll"></div>
   <button class="fab" id="fab-add">+</button>
 </div>
@@ -367,6 +373,7 @@ body { display: flex; flex-direction: column; }
     <div class="cust-tabs" id="cust-tabs">
       <button class="cust-tab active" id="tab-mine">我的客户</button>
       <button class="cust-tab" id="tab-pool">公共池</button>
+      <button id="batch-toggle-btn" style="margin-left:auto;padding:6px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-dim);">☐ 批量</button>
     </div>
     <div class="search-bar">
       <input type="text" id="search-input" class="search-input" placeholder="搜索姓名/电话/备注...">
@@ -380,11 +387,31 @@ body { display: flex; flex-direction: column; }
         <option value="D">D级</option>
       </select>
     </div>
+    <div id="adv-filter-bar" style="display:none;padding:0 12px 10px;display:none;flex-wrap:wrap;gap:8px;align-items:flex-end;">
+      <select id="filter-channel" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);max-width:110px;">
+        <option value="">全部渠道</option></select>
+      <input type="date" id="filter-date-from" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:#fff;color:var(--text);max-width:120px;" title="录入日期从">
+      <span style="font-size:11px;color:var(--text-dim);">至</span>
+      <input type="date" id="filter-date-to" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:#fff;color:var(--text);max-width:120px;" title="录入日期至">
+      <input type="text" id="filter-building" placeholder="意向栋数" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:#fff;color:var(--text);max-width:90px;">
+      <button id="filter-clear" style="padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-dim);cursor:pointer;">清除</button>
+    </div>
+    <div id="adv-filter-toggle" style="padding:0 12px 6px;text-align:right;">
+      <button id="adv-filter-btn" style="background:none;border:none;color:var(--gold);font-size:12px;cursor:pointer;font-weight:600;">高级筛选 ▸</button>
+    </div>
   </div>
   <div class="scroll-area" id="cust-scroll">
     <div id="customer-list"></div>
   </div>
   <button class="fab" id="fab-add2">+</button>
+  <div id="batch-action-bar" style="display:none;position:fixed;bottom:calc(60px + var(--safe));left:0;right:0;background:var(--bg);border-top:2px solid var(--gold);padding:10px 16px;z-index:150;flex-wrap:wrap;gap:8px;align-items:center;box-shadow:0 -2px 12px rgba(0,0,0,0.1);">
+    <span id="batch-count" style="font-size:13px;font-weight:600;color:var(--gold);min-width:54px;">已选 0</span>
+    <button class="qf-btn" id="batch-level" style="font-size:12px;padding:5px 10px;">改等级</button>
+    <button class="qf-btn" id="batch-consultant" style="font-size:12px;padding:5px 10px;">分配顾问</button>
+    <button class="qf-btn" id="batch-pool-btn" style="font-size:12px;padding:5px 10px;">移入公池</button>
+    <button class="qf-btn" id="batch-delete-btn" style="font-size:12px;padding:5px 10px;color:var(--red);border-color:rgba(231,76,60,0.3);">删除</button>
+    <button class="qf-btn" id="batch-cancel-btn" style="font-size:12px;padding:5px 10px;margin-left:auto;">取消</button>
+  </div>
 </div>
 
 <div id="page-stats" class="page">
@@ -1162,9 +1189,11 @@ function renderCustomerCard(c) {
   }
 
   var revisitHtml = c.revisitCount ? '<span class="revisit-badge">复访🔥 ' + c.revisitCount + '次</span>' : '';
+  var batchCheckHtml = batchMode ? '<input type="checkbox" class="batch-checkbox" data-bid="' + c.id + '" style="width:17px;height:17px;accent-color:var(--gold);flex-shrink:0;margin-right:2px;cursor:pointer;"' + (batchSelected[c.id] ? ' checked' : '') + ' onclick="event.stopPropagation();toggleBatchSelect(\'' + c.id + '\')">' : '';
 
   return '<div class="customer-card" data-id="' + c.id + '">' +
     '<div class="card-row1">' +
+      batchCheckHtml +
       '<span class="level-badge ' + c.level + '">' + c.level + '</span>' +
       '<div class="card-name">' + escRaw(c.name) + '</div>' +
       consultantHeader +
@@ -1181,11 +1210,143 @@ function renderCustomerCard(c) {
       (c.visitTime ? '<span>' + fDate(c.visitTime) + ' 接待</span>' : '') +
       (c.residence ? '<span>🏠 ' + escRaw(c.residence) + '</span>' : '') +
       followupMeta +
+      '<button class="card-qf-btn" data-qf-id="' + c.id + '">📝 跟进</button>' +
     '</div>' +
   '</div>';
 }
 
 var currentCustTab = 'mine';
+var batchMode = false;
+var batchSelected = {};
+
+function toggleBatchMode() {
+  batchMode = !batchMode;
+  batchSelected = {};
+  var btn = document.getElementById('batch-toggle-btn');
+  var bar = document.getElementById('batch-action-bar');
+  if (batchMode) {
+    btn.textContent = '☑ 批量';
+    btn.style.color = 'var(--gold)';
+    btn.style.borderColor = 'var(--gold)';
+    bar.style.display = 'flex';
+  } else {
+    btn.textContent = '☐ 批量';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+    bar.style.display = 'none';
+  }
+  renderCustomerList();
+}
+
+function toggleBatchSelect(cid) {
+  if (batchSelected[cid]) delete batchSelected[cid];
+  else batchSelected[cid] = true;
+  document.getElementById('batch-count').textContent = '已选 ' + Object.keys(batchSelected).length;
+  var selCount = Object.keys(batchSelected).length;
+  if (selCount === 0) toggleBatchMode();
+}
+
+function getSelectedCustomers() {
+  return Object.keys(batchSelected).map(function(id) {
+    return DB.customers.find(function(c) { return c.id === id; });
+  }).filter(Boolean);
+}
+
+function batchChangeLevel() {
+  var sel = getSelectedCustomers();
+  if (sel.length === 0) { toast('请先选择客户', 'error'); return; }
+  var levels = ['A', 'B', 'C+', 'C', 'C-', 'D'];
+  var opts = levels.map(function(l) { return '<button onclick="batchDoLevel(\'' + l + '\')" style="display:block;width:100%;padding:10px;border:none;border-bottom:1px solid var(--border);background:#fff;font-size:14px;cursor:pointer;text-align:center;">' + l + '级</button>'; }).join('');
+  var html = '<div style="position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);" onclick="if(event.target===this)this.parentNode.removeChild(this)"><div style="background:#fff;border-radius:16px;width:200px;overflow:hidden;">' +
+    '<div style="padding:12px;text-align:center;font-weight:700;border-bottom:1px solid var(--border);color:var(--text);">选择等级 · ' + sel.length + '人</div>' + opts + '</div></div>';
+  var d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d);
+}
+
+function batchDoLevel(lv) {
+  getSelectedCustomers().forEach(function(c) { c.level = lv; });
+  saveDB(); toast('已设为 ' + lv + ' 级', 'success');
+  document.body.querySelectorAll('body > div').forEach(function(d) { if (d.style && d.style.zIndex === '500') d.remove(); });
+  toggleBatchMode(); renderCustomerList();
+}
+
+function batchAssignConsultant() {
+  var sel = getSelectedCustomers();
+  if (sel.length === 0) { toast('请先选择客户', 'error'); return; }
+  var names = Object.keys(DEMO_ACCOUNTS).filter(function(n) { return DEMO_ACCOUNTS[n].role === '置业顾问'; });
+  var opts = names.map(function(n) { return '<button onclick="batchDoAssign(\'' + escHtml(n) + '\')" style="display:block;width:100%;padding:10px;border:none;border-bottom:1px solid var(--border);background:#fff;font-size:14px;cursor:pointer;text-align:center;">' + escRaw(n) + '</button>'; }).join('');
+  var html = '<div style="position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);" onclick="if(event.target===this)this.parentNode.removeChild(this)"><div style="background:#fff;border-radius:16px;width:200px;max-height:360px;overflow-y:auto;">' +
+    '<div style="padding:12px;text-align:center;font-weight:700;border-bottom:1px solid var(--border);color:var(--text);">分配顾问 · ' + sel.length + '人</div>' + opts + '</div></div>';
+  var d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d);
+}
+
+function batchDoAssign(name) {
+  getSelectedCustomers().forEach(function(c) { c.consultant = name; c.inPool = false; });
+  saveDB(); toast('已分配给 ' + name, 'success');
+  document.body.querySelectorAll('body > div').forEach(function(d) { if (d.style && d.style.zIndex === '500') d.remove(); });
+  toggleBatchMode(); renderCustomerList();
+}
+
+function batchMoveToPool() {
+  var sel = getSelectedCustomers();
+  if (sel.length === 0) { toast('请先选择客户', 'error'); return; }
+  confirmDlg('移入公池', '确定将 ' + sel.length + ' 位客户移入公共池吗？其他顾问可领取跟进。', function() {
+    sel.forEach(function(c) { c.inPool = true; c.poolTime = new Date().toISOString(); });
+    saveDB(); toast('已移入公池', 'success');
+    toggleBatchMode(); renderCustomerList();
+  });
+}
+
+function batchDelete() {
+  var sel = getSelectedCustomers();
+  if (sel.length === 0) { toast('请先选择客户', 'error'); return; }
+  confirmDlg('批量删除', '⚠️ 确定删除 ' + sel.length + ' 位客户及其跟进记录吗？此操作不可恢复！', function() {
+    var ids = sel.map(function(c) { return c.id; });
+    DB.customers = DB.customers.filter(function(c) { return ids.indexOf(c.id) === -1; });
+    saveDB(); toast('已删除 ' + sel.length + ' 位客户', 'success');
+    toggleBatchMode(); renderCustomerList();
+  });
+}
+
+var advFilterOpen = false;
+var filterChannel = '';
+var filterDateFrom = '';
+var filterDateTo = '';
+var filterBuilding = '';
+
+function toggleAdvFilter() {
+  advFilterOpen = !advFilterOpen;
+  var bar = document.getElementById('adv-filter-bar');
+  var btn = document.getElementById('adv-filter-btn');
+  bar.style.display = advFilterOpen ? 'flex' : 'none';
+  btn.textContent = advFilterOpen ? '高级筛选 ▾' : '高级筛选 ▸';
+  if (advFilterOpen && !bar.dataset.init) {
+    bar.dataset.init = '1';
+    var sel = document.getElementById('filter-channel');
+    CHANNELS.forEach(function(ch) {
+      var opt = document.createElement('option');
+      opt.value = ch; opt.textContent = ch;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+function updateAdvFilter() {
+  filterChannel = document.getElementById('filter-channel').value;
+  filterDateFrom = document.getElementById('filter-date-from').value;
+  filterDateTo = document.getElementById('filter-date-to').value;
+  filterBuilding = document.getElementById('filter-building').value.trim();
+  renderCustomerList();
+}
+
+function clearAdvFilter() {
+  document.getElementById('filter-channel').value = '';
+  document.getElementById('filter-date-from').value = '';
+  document.getElementById('filter-date-to').value = '';
+  document.getElementById('filter-building').value = '';
+  filterChannel = ''; filterDateFrom = ''; filterDateTo = ''; filterBuilding = '';
+  renderCustomerList();
+}
+
 function renderCustomerList() {
   var search = (document.getElementById('search-input').value || '').trim().toLowerCase();
   var levelF = document.getElementById('level-filter').value;
@@ -1203,7 +1364,13 @@ function renderCustomerList() {
       || c.phone.indexOf(search) !== -1
       || (c.note || '').toLowerCase().indexOf(search) !== -1
       || (c.soace || '').toLowerCase().indexOf(search) !== -1;
-    return matchL && matchS;
+    var matchCh = !filterChannel || c.channel === filterChannel;
+    var matchBld = !filterBuilding || (c.buildingIntent || '').toLowerCase().indexOf(filterBuilding.toLowerCase()) !== -1;
+    var from = filterDateFrom, to = filterDateTo;
+    if (from && to && from > to) { var tmp = from; from = to; to = tmp; }
+    var matchDf = !from || (c.createdAt && c.createdAt.slice(0, 10) >= from);
+    var matchDt = !to || (c.createdAt && c.createdAt.slice(0, 10) <= to);
+    return matchL && matchS && matchCh && matchBld && matchDf && matchDt;
   });
   list.sort(function(a, b) {
     var ad = daysBetween(a.followUpDate || '9999', today());
@@ -1223,9 +1390,22 @@ function renderCustomerList() {
     return;
   }
   container.innerHTML = list.map(renderCustomerCard).join('');
-  container.querySelectorAll('.customer-card').forEach(function(card) {
-    card.addEventListener('click', function() { openDetail(card.dataset.id); });
-  });
+  container.onclick = function(e) {
+    var qfBtn = e.target.closest('.card-qf-btn');
+    if (qfBtn) { e.stopPropagation(); showQuickFollowupOverlay(qfBtn.dataset.qfId); return; }
+    if (batchMode) {
+      var cb = e.target.closest('.batch-checkbox');
+      if (cb) { toggleBatchSelect(cb.dataset.bid); return; }
+      var cardB = e.target.closest('.customer-card');
+      if (cardB) {
+        var cb2 = cardB.querySelector('.batch-checkbox');
+        if (cb2) { cb2.checked = !cb2.checked; toggleBatchSelect(cardB.dataset.id); }
+      }
+      return;
+    }
+    var card = e.target.closest('.customer-card');
+    if (card) { openDetail(card.dataset.id); }
+  };
 }
 
 function switchCustTab(tab) {
@@ -1234,7 +1414,13 @@ function switchCustTab(tab) {
 }
 
 // === Workbench ===
+var workbenchView = 'list';
+var calendarYear = 0;
+var calendarMonth = 0;
+var calendarSelectedDate = '';
+
 function renderWorkbench() {
+  if (workbenchView === 'calendar') { renderCalendar(); return; }
   var customers = getMyCustomers();
   var todayStr = today();
   autoPoolCheck();
@@ -1392,6 +1578,114 @@ function renderWorkbench() {
   document.querySelectorAll('.wb-item').forEach(function(item) {
     item.addEventListener('click', function() { openDetail(item.dataset.id); });
   });
+}
+
+// === Calendar ===
+function getFollowUpsForDate(dateStr) {
+  var list = getMyCustomers();
+  if (DB.currentUser && DB.currentUser.role === '销售经理') list = getAllAssignedCustomers();
+  return list.filter(function(c) { return c.followUpDate === dateStr && !c.inPool; });
+}
+
+function getCalDayCounts(dateStr) {
+  var list = getFollowUpsForDate(dateStr);
+  var total = list.length;
+  var overdue = list.filter(function(c) { return daysBetween(c.followUpDate, today()) > 0; }).length;
+  return { total: total, overdue: overdue };
+}
+
+function renderCalendar() {
+  var now = new Date();
+  if (!calendarYear) { calendarYear = now.getFullYear(); calendarMonth = now.getMonth() + 1; }
+  var year = calendarYear, month = calendarMonth;
+  var firstDay = new Date(year, month - 1, 1);
+  var startDow = firstDay.getDay();
+  var daysInMonth = new Date(year, month, 0).getDate();
+  var todayStr = today();
+  var prevMonthDays = new Date(year, month - 1, 0).getDate();
+
+  // Month nav
+  var headerHtml = '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 12px 12px;">' +
+    '<button id="cal-prev" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--gold);padding:4px 8px;">←</button>' +
+    '<div style="font-size:16px;font-weight:700;color:var(--text);">' + year + '年 ' + month + '月</div>' +
+    '<button id="cal-next" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--gold);padding:4px 8px;">→</button>' +
+  '</div>';
+
+  // Day headers
+  var dowNames = ['日', '一', '二', '三', '四', '五', '六'];
+  var gridHtml = '<div class="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:0 10px;">';
+  dowNames.forEach(function(d) {
+    gridHtml += '<div class="cal-day-header" style="text-align:center;font-size:11px;color:var(--text-dim);padding:4px 0;font-weight:600;">' + d + '</div>';
+  });
+
+  // Fill leading cells from previous month
+  var totalCells = startDow + daysInMonth;
+  var rows = Math.ceil(totalCells / 7);
+  totalCells = rows * 7;
+  for (var i = 0; i < totalCells; i++) {
+    var dayNum, isCurrent = true, dateStr;
+    if (i < startDow) {
+      dayNum = prevMonthDays - startDow + i + 1;
+      isCurrent = false;
+      var pm = month - 1, py = year;
+      if (pm === 0) { pm = 12; py--; }
+      dateStr = py + '-' + String(pm).padStart(2, '0') + '-' + String(dayNum).padStart(2, '0');
+    } else if (i - startDow >= daysInMonth) {
+      dayNum = i - startDow - daysInMonth + 1;
+      isCurrent = false;
+      var nm = month + 1, ny = year;
+      if (nm === 13) { nm = 1; ny++; }
+      dateStr = ny + '-' + String(nm).padStart(2, '0') + '-' + String(dayNum).padStart(2, '0');
+    } else {
+      dayNum = i - startDow + 1;
+      dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(dayNum).padStart(2, '0');
+    }
+    var isToday = dateStr === todayStr;
+    var counts = getCalDayCounts(dateStr);
+    var dotHtml = '';
+    if (counts.overdue > 0) dotHtml = '<div style="display:flex;gap:2px;margin-top:2px;"><div class="cal-day-dot" style="width:5px;height:5px;border-radius:50%;background:var(--red);"></div></div>';
+    else if (counts.total > 0) dotHtml = '<div style="display:flex;gap:2px;margin-top:2px;"><div class="cal-day-dot" style="width:5px;height:5px;border-radius:50%;background:var(--gold);"></div></div>';
+    gridHtml += '<div class="cal-day' + (isCurrent ? '' : ' dim') + (isToday ? ' today' : '') + '" data-cal-date="' + dateStr + '" style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;font-size:13px;position:relative;background:' + (isToday ? 'var(--gold-dim)' : 'var(--card)') + ';border:1px solid ' + (isToday ? 'var(--gold)' : 'transparent') + ';' + (isCurrent ? 'color:var(--text);' : 'color:var(--text-dim);opacity:0.4;') + '">' + dayNum + dotHtml + '</div>';
+  }
+  gridHtml += '</div>';
+
+  // Selected date customer list
+  var listHtml = '';
+  if (calendarSelectedDate) {
+    var dateList = getFollowUpsForDate(calendarSelectedDate);
+    listHtml += '<div style="padding:8px 12px;font-size:13px;font-weight:600;color:var(--gold);">📅 ' + calendarSelectedDate + ' · ' + dateList.length + ' 人待跟进</div>';
+    if (dateList.length === 0) {
+      listHtml += '<div style="padding:8px 12px;color:var(--text-dim);font-size:12px;">该日无跟进计划</div>';
+    } else {
+      listHtml += '<div style="padding:0 12px;">' + dateList.map(renderCustomerCard).join('') + '</div>';
+    }
+  }
+
+  document.getElementById('wb-scroll').innerHTML = headerHtml + gridHtml + listHtml;
+
+  // Wire events
+  var prevBtn = document.getElementById('cal-prev');
+  var nextBtn = document.getElementById('cal-next');
+  if (prevBtn) prevBtn.onclick = function() {
+    calendarMonth--; if (calendarMonth === 0) { calendarMonth = 12; calendarYear--; }
+    calendarSelectedDate = ''; renderWorkbench();
+  };
+  if (nextBtn) nextBtn.onclick = function() {
+    calendarMonth++; if (calendarMonth === 13) { calendarMonth = 1; calendarYear++; }
+    calendarSelectedDate = ''; renderWorkbench();
+  };
+  var calScroll = document.getElementById('wb-scroll');
+  calScroll.onclick = function(e) {
+    var day = e.target.closest('.cal-day');
+    if (day && day.dataset.calDate) {
+      calendarSelectedDate = day.dataset.calDate;
+      renderWorkbench();
+    }
+    var qfBtn = e.target.closest('.card-qf-btn');
+    if (qfBtn) { e.stopPropagation(); showQuickFollowupOverlay(qfBtn.dataset.qfId); return; }
+    var card = e.target.closest('.customer-card');
+    if (card) { openDetail(card.dataset.id); }
+  };
 }
 
 // === Stats ===
@@ -1668,6 +1962,7 @@ function renderAnalysis() {
     '<div style="padding:12px 16px 0;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;">按成交状态</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + dealChips + '</div></div>' +
     '<div style="padding:12px 16px 0;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;">按销售阶段</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + stageChips + '</div></div>' +
     '<div style="padding:12px 16px 0;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;">按复访</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + revisitChips + '</div></div>' +
+    renderComparisonTable() +
     '<div class="section-title" style="margin-top:16px;padding:0 16px;">📇 客户列表' + filterText + ' · 共 ' + customers.length + ' 位</div>' +
     listHtml;
 
@@ -1684,10 +1979,114 @@ function renderAnalysis() {
     });
   });
 
-  // Event delegation for customer cards
-  document.getElementById('analysis-scroll').querySelectorAll('.customer-card').forEach(function(card) {
-    card.addEventListener('click', function() { openDetail(card.dataset.id); });
+  // Event delegation for customer cards (supports quick follow-up button)
+  document.getElementById('analysis-scroll').onclick = function(e) {
+    var qfBtn = e.target.closest('.card-qf-btn');
+    if (qfBtn) { e.stopPropagation(); showQuickFollowupOverlay(qfBtn.dataset.qfId); return; }
+    var card = e.target.closest('.customer-card');
+    if (card) { openDetail(card.dataset.id); }
+  };
+}
+
+// === Comparison Table ===
+function getComparisonData() {
+  var now = new Date();
+  var thisY = now.getFullYear();
+  var thisM = now.getMonth() + 1;
+  var lastY = thisM === 1 ? thisY - 1 : thisY;
+  var lastMo = thisM === 1 ? 12 : thisM - 1;
+
+  function fmtYM(y, m) { return y + '-' + (m < 10 ? '0' : '') + m; }
+  function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+
+  var thisStart = fmtYM(thisY, thisM) + '-01';
+  var thisEnd = fmtYM(thisY, thisM) + '-' + (daysInMonth(thisY, thisM) < 10 ? '0' : '') + daysInMonth(thisY, thisM);
+  var lastStart = fmtYM(lastY, lastMo) + '-01';
+  var lastEnd = fmtYM(lastY, lastMo) + '-' + (daysInMonth(lastY, lastMo) < 10 ? '0' : '') + daysInMonth(lastY, lastMo);
+
+  var customers = DB.customers;
+
+  var newThis = customers.filter(function(c) { return c.createdAt >= thisStart && c.createdAt <= thisEnd; }).length;
+  var newLast = customers.filter(function(c) { return c.createdAt >= lastStart && c.createdAt <= lastEnd; }).length;
+
+  var visitThis = 0, visitLast = 0;
+  customers.forEach(function(c) {
+    (c.followUps || []).forEach(function(f) {
+      if (f.method === '来访' && f.time) {
+        var d = f.time.slice(0, 10);
+        if (d >= thisStart && d <= thisEnd) visitThis++;
+        if (d >= lastStart && d <= lastEnd) visitLast++;
+      }
+    });
   });
+
+  var subThis = customers.filter(function(c) { return c.dealStatus === '认购' && c.dealDate && c.dealDate >= thisStart && c.dealDate <= thisEnd; }).length;
+  var subLast = customers.filter(function(c) { return c.dealStatus === '认购' && c.dealDate && c.dealDate >= lastStart && c.dealDate <= lastEnd; }).length;
+
+  var signThis = customers.filter(function(c) { return c.dealStatus === '签约' && c.dealDate && c.dealDate >= thisStart && c.dealDate <= thisEnd; }).length;
+  var signLast = customers.filter(function(c) { return c.dealStatus === '签约' && c.dealDate && c.dealDate >= lastStart && c.dealDate <= lastEnd; }).length;
+
+  var dealThis = subThis + signThis;
+  var dealLast = subLast + signLast;
+
+  var rateThisV = newThis > 0 ? dealThis / newThis * 100 : 0;
+  var rateLastV = newLast > 0 ? dealLast / newLast * 100 : 0;
+
+  return {
+    thisLabel: thisY + '年' + thisM + '月',
+    lastLabel: lastY + '年' + lastMo + '月',
+    rows: [
+      { label: '新增客户', thisV: newThis, lastV: newLast },
+      { label: '来访量', thisV: visitThis, lastV: visitLast },
+      { label: '认购数', thisV: subThis, lastV: subLast },
+      { label: '签约数', thisV: signThis, lastV: signLast },
+      { label: '成交总数', thisV: dealThis, lastV: dealLast },
+      { label: '成交率', thisV: rateThisV, lastV: rateLastV, suffix: '%', decimals: 1 }
+    ]
+  };
+}
+
+function renderComparisonTable() {
+  var d = getComparisonData();
+  function arrow(tv, lv) {
+    if (tv > lv) return '<span style="color:#2ecc71">↑</span>';
+    if (tv < lv) return '<span style="color:#e74c3c">↓</span>';
+    return '<span style="color:var(--text-dim)">—</span>';
+  }
+  function changeStr(tv, lv, decimals, suffix) {
+    var diff = tv - lv;
+    var abs = Math.abs(diff);
+    var dec = decimals || 0;
+    var suf = suffix || '';
+    if (diff > 0) return '<span style="color:#2ecc71">+' + abs.toFixed(dec) + suf + '</span>';
+    if (diff < 0) return '<span style="color:#e74c3c">-' + abs.toFixed(dec) + suf + '</span>';
+    return '<span style="color:var(--text-dim)">0</span>';
+  }
+  function fmtVal(v, decimals, suffix) {
+    return (decimals ? v.toFixed(decimals) : v) + (suffix || '');
+  }
+
+  var rowsHtml = d.rows.map(function(r) {
+    var dec = r.decimals || 0, suf = r.suffix || '';
+    return '<tr>' +
+      '<td style="padding:8px 12px;font-size:13px;color:var(--text);border-bottom:1px solid var(--border);">' + escHtml(r.label) + '</td>' +
+      '<td style="padding:8px 12px;font-size:13px;color:var(--text);text-align:center;border-bottom:1px solid var(--border);">' + fmtVal(r.thisV, dec, suf) + '</td>' +
+      '<td style="padding:8px 12px;font-size:13px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">' + fmtVal(r.lastV, dec, suf) + '</td>' +
+      '<td style="padding:8px 12px;font-size:13px;text-align:center;border-bottom:1px solid var(--border);">' + arrow(r.thisV, r.lastV) + ' ' + changeStr(r.thisV, r.lastV, dec, suf) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  return '<div style="margin:16px 16px 0;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;">' +
+    '<div style="padding:12px 14px;font-size:14px;font-weight:600;color:var(--gold);border-bottom:1px solid var(--border);">📊 月度数据对比 · ' + escHtml(d.thisLabel) + ' vs ' + escHtml(d.lastLabel) + '</div>' +
+    '<table style="width:100%;border-collapse:collapse;">' +
+    '<thead><tr>' +
+      '<th style="padding:8px 12px;font-size:11px;color:var(--text-dim);text-align:left;border-bottom:1px solid var(--border);">指标</th>' +
+      '<th style="padding:8px 12px;font-size:11px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">本月</th>' +
+      '<th style="padding:8px 12px;font-size:11px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">上月</th>' +
+      '<th style="padding:8px 12px;font-size:11px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">变化</th>' +
+    '</tr></thead>' +
+    '<tbody>' + rowsHtml + '</tbody>' +
+    '</table></div>';
 }
 
 // === My Page ===
@@ -1711,6 +2110,12 @@ function renderMy() {
       '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:8px;">⚙️ 系统设置</div>' +
       '<div class="setting-row"><span>🏊 自动公海池阈值（天）</span><span style="display:flex;align-items:center;gap:6px;"><input type="number" id="set-pool-days" class="setting-input" min="0" value="' + (DB.settings ? DB.settings.autoPoolDays : 30) + '"><button class="qf-btn" id="save-settings">保存</button></span></div>' +
       '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">超过阈值天未跟进的客户将自动移入公共池。设为 0 关闭自动回收。</div>' +
+      '<div class="setting-row" style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;">' +
+        '<span>🔔 浏览器跟进提醒</span>' +
+        '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;color:var(--text-dim);">' +
+          '<input type="checkbox" id="set-notif"' + ((DB.settings && DB.settings.followupNotif) ? ' checked' : '') + ' style="accent-color:var(--gold);"> 开启后浏览器定期推送今日待跟进提醒' +
+        '</label>' +
+      '</div>' +
     '</div>';
 
     // Pending approvals
@@ -1752,19 +2157,34 @@ function renderMy() {
     '<div id="change-pwd-msg" style="font-size:11px;margin-top:6px;display:none;"></div>' +
   '</div>';
 
-  html += '<div class="action-list">' +
-    '<div class="action-item" id="act-export"><span class="action-icon">📤</span><span class="action-text">导出客户数据</span><span class="action-arrow">›</span></div>' +
-    '<div class="action-item" id="act-import"><span class="action-icon">📥</span><span class="action-text">导入客户数据</span><span class="action-arrow">›</span></div>' +
+  html += '<div class="profile-card" style="margin-top:12px;">' +
+    '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:12px;">💾 数据管理</div>' +
+    '<div class="action-item" id="act-export"><span class="action-icon">📤</span><span class="action-text">导出客户数据(JSON)</span><span class="action-arrow">›</span></div>' +
+    '<div class="action-item" id="act-export-xlsx"><span class="action-icon">📊</span><span class="action-text">导出Excel汇总表</span><span class="action-arrow">›</span></div>' +
+    '<div class="action-item" id="act-export-all"><span class="action-icon">💿</span><span class="action-text">全量备份下载</span><span class="action-arrow">›</span></div>' +
+    '<div class="action-item" id="act-import"><span class="action-icon">📥</span><span class="action-text">导入客户数据(覆盖)</span><span class="action-arrow">›</span></div>' +
+    '<div class="action-item" id="act-restore"><span class="action-icon">🔄</span><span class="action-text">恢复备份(合并)</span><span class="action-arrow">›</span></div>' +
   '</div>' +
   '<input type="file" id="import-file" accept=".json" style="display:none">' +
+  '<input type="file" id="restore-file" accept=".json" style="display:none">' +
   '<div style="text-align:center;padding:20px 0;color:var(--text-dim);font-size:11px;">中山御宸 · 案场管理系统 v3.0</div>';
 
   document.getElementById('my-scroll').innerHTML = html;
 
-  // Export/Import
+  // Data management
   document.getElementById('act-export').onclick = exportData;
+  document.getElementById('act-export-xlsx').onclick = function() {
+    if (typeof XLSX !== 'undefined') { exportCustomerSummary(); return; }
+    var sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    sc.onload = function() { exportCustomerSummary(); };
+    document.head.appendChild(sc);
+  };
+  document.getElementById('act-export-all').onclick = exportAllData;
   document.getElementById('act-import').onclick = function() { document.getElementById('import-file').click(); };
   document.getElementById('import-file').onchange = importData;
+  document.getElementById('act-restore').onclick = function() { document.getElementById('restore-file').click(); };
+  document.getElementById('restore-file').onchange = restoreMergeData;
 
   // Admin panel button
   var adminBtn = document.getElementById('act-admin');
@@ -1788,6 +2208,23 @@ function renderMy() {
       DB.settings.autoPoolDays = v;
       saveDB();
       toast('已保存：' + (v > 0 ? v + '天未跟进自动入公海池' : '已关闭自动回收'), 'success');
+    };
+  }
+  // Notification toggle
+  var notifCb = document.getElementById('set-notif');
+  if (notifCb) {
+    notifCb.onchange = function() {
+      if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
+      DB.settings.followupNotif = notifCb.checked;
+      saveDB();
+      if (notifCb.checked) {
+        requestNotificationPermission();
+        startNotificationTimer();
+        toast('已开启跟进提醒', 'success');
+      } else {
+        stopNotificationTimer();
+        toast('已关闭跟进提醒', 'success');
+      }
     };
   }
 
@@ -1848,6 +2285,70 @@ function importData() {
   };
   reader.readAsText(file);
   document.getElementById('import-file').value = '';
+}
+
+function restoreMergeData() {
+  var file = document.getElementById('restore-file').files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (!data.customers || !Array.isArray(data.customers)) { toast('文件格式不正确，需要包含 customers 数组', 'error'); return; }
+      var backupCustomers = data.customers;
+      var existingPhones = {};
+      DB.customers.forEach(function(c) { existingPhones[c.phone] = c; });
+      var conflicts = backupCustomers.filter(function(c) { return existingPhones[c.phone]; });
+      var newOnly = backupCustomers.filter(function(c) { return !existingPhones[c.phone]; });
+      if (conflicts.length === 0) {
+        confirmDlg('恢复备份', '备份中有 ' + newOnly.length + ' 条新记录，无电话冲突。直接导入？', function() {
+          DB.customers = DB.customers.concat(newOnly);
+          saveDB(); toast('成功导入 ' + newOnly.length + ' 条新记录', 'success');
+          navigateTo('workbench');
+        });
+      } else {
+        var msg = '备份共 ' + backupCustomers.length + ' 条记录。<br><br>' +
+          '🆕 新记录：' + newOnly.length + ' 条<br>' +
+          '⚠️ 电话冲突：' + conflicts.length + ' 条（系统中已存在相同电话的客户）<br><br>' +
+          '请选择处理方式：';
+        var overlay = document.getElementById('detail-overlay');
+        overlay.innerHTML = '<div style="position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);padding:16px;" onclick="if(event.target===this)this.parentNode.style.display=\'none\'">' +
+          '<div style="background:#fff;border-radius:16px;padding:24px 20px;max-width:400px;width:100%;">' +
+            '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:12px;">🔄 恢复备份</div>' +
+            '<div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">' + msg + '</div>' +
+            '<div style="display:flex;flex-direction:column;gap:8px;">' +
+              '<button onclick="restoreMergeSkip()" style="padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:14px;cursor:pointer;">跳过冲突（仅导入新记录）</button>' +
+              '<button onclick="restoreMergeOverwrite()" style="padding:12px;border-radius:10px;border:none;background:var(--gold);color:#111;font-size:14px;font-weight:600;cursor:pointer;">覆盖冲突（以备份为准）</button>' +
+              '<button onclick="document.getElementById(\'detail-overlay\').style.display=\'none\'" style="padding:10px;border-radius:10px;border:none;background:var(--card2);color:var(--text-dim);font-size:13px;cursor:pointer;">取消</button>' +
+            '</div></div></div>';
+        overlay.style.display = 'block';
+        overlay._restoreNew = newOnly;
+        overlay._restoreConflicts = conflicts;
+      }
+    } catch(err) { toast('文件解析失败: ' + err.message, 'error'); }
+  };
+  reader.readAsText(file);
+  document.getElementById('restore-file').value = '';
+}
+
+function restoreMergeSkip() {
+  var overlay = document.getElementById('detail-overlay');
+  var newOnly = overlay._restoreNew || [];
+  DB.customers = DB.customers.concat(newOnly);
+  saveDB(); toast('成功导入 ' + newOnly.length + ' 条新记录（跳过冲突）', 'success');
+  overlay.style.display = 'none'; navigateTo('workbench');
+}
+
+function restoreMergeOverwrite() {
+  var overlay = document.getElementById('detail-overlay');
+  var newOnly = overlay._restoreNew || [];
+  var conflicts = overlay._restoreConflicts || [];
+  var conflictPhones = {};
+  conflicts.forEach(function(c) { conflictPhones[c.phone] = true; });
+  DB.customers = DB.customers.filter(function(c) { return !conflictPhones[c.phone]; });
+  DB.customers = DB.customers.concat(newOnly).concat(conflicts);
+  saveDB(); toast('成功导入 ' + (newOnly.length + conflicts.length) + ' 条记录（已覆盖冲突）', 'success');
+  overlay.style.display = 'none'; navigateTo('workbench');
 }
 
 // ============================================================
@@ -2067,6 +2568,61 @@ function openDetail(id) {
   };
 }
 
+// === Quick Follow-up Overlay ===
+function showQuickFollowupOverlay(cid) {
+  var c = DB.customers.find(function(x) { return x.id === cid; });
+  if (!c) { toast('客户不存在', 'error'); return; }
+  var methods = FOLLOWUP_METHODS;
+  var defaultNext = '';
+  var d = new Date(); d.setDate(d.getDate() + 7);
+  defaultNext = fDate(d);
+  var html = '<div style="position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);padding:16px;" onclick="if(event.target===this)closeQFOverlay()">' +
+    '<div style="background:#fff;border-radius:16px;width:100%;max-width:400px;padding:20px;">' +
+      '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">📝 快捷跟进</div>' +
+      '<div style="font-size:13px;color:var(--text-dim);margin-bottom:14px;">客户：<b style="color:#1a1a1a;">' + escRaw(c.name) + '</b></div>' +
+      '<div style="margin-bottom:12px;"><label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">跟进方式</label><div style="display:flex;gap:8px;">' +
+        methods.map(function(m) {
+          return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;"><input type="radio" name="qf-method" value="' + m + '"' + (m === '来访' ? ' checked' : '') + ' style="accent-color:var(--gold);"> ' + m + '</label>';
+        }).join('') +
+      '</div></div>' +
+      '<div style="margin-bottom:12px;"><textarea id="qf-content-q" placeholder="跟进内容..." style="width:100%;height:80px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card2);color:var(--text);resize:none;"></textarea></div>' +
+      '<div style="margin-bottom:16px;"><label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">下次跟进日期</label><input type="date" id="qf-next-q" value="' + defaultNext + '" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);"></div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<button onclick="closeQFOverlay()" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--card2);color:var(--text);font-size:14px;cursor:pointer;">取消</button>' +
+        '<button onclick="submitQuickFollowup(\'' + cid + '\')" style="flex:1;padding:12px;border:none;border-radius:10px;background:var(--gold);color:#111;font-size:14px;font-weight:600;cursor:pointer;">保存跟进</button>' +
+      '</div></div></div>';
+  var overlay = document.getElementById('quick-followup-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'quick-followup-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = html;
+  overlay.style.display = 'block';
+}
+
+function closeQFOverlay() {
+  var overlay = document.getElementById('quick-followup-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function submitQuickFollowup(cid) {
+  var c = DB.customers.find(function(x) { return x.id === cid; });
+  if (!c) { toast('客户不存在', 'error'); return; }
+  var method = (document.querySelector('input[name="qf-method"]:checked') || {}).value || '来访';
+  var content = (document.getElementById('qf-content-q').value || '').trim();
+  var nextDate = (document.getElementById('qf-next-q').value || '').trim();
+  if (!content) { toast('请填写跟进内容', 'error'); return; }
+  addFollowUp(c, method, content, nextDate);
+  saveDB(); toast('跟进已记录', 'success');
+  closeQFOverlay();
+  // Refresh current view
+  if (currentTab === 'workbench') renderWorkbench();
+  else if (currentTab === 'customers') renderCustomerList();
+  else if (currentTab === 'analysis') renderAnalysis();
+  else if (currentTab === 'stats') renderStats();
+}
+
 function closeDetail() {
   document.getElementById('detail-page').classList.remove('active');
   document.getElementById('topbar').classList.remove('hidden');
@@ -2269,6 +2825,7 @@ function savePriceCalc() {
 // 10. FORM PAGE
 // ============================================================
 var editingCustomer = null;
+var _forceCreate = false;
 
 function openForm(prefill, customer) {
   editingCustomer = customer || null;
@@ -2391,21 +2948,15 @@ function openForm(prefill, customer) {
   };
 }
 
-function submitForm() {
+function collectFormData() {
   var name = (document.getElementById('f-name').value || '').trim();
   var phone = (document.getElementById('f-phone').value || '').trim();
-  if (!name) { toast('请填写客户姓名', 'error'); return; }
-  if (!phone) { toast('请填写电话号码', 'error'); return; }
-  var dup = DB.customers.find(function(c) { return c.phone === phone && c.id !== (editingCustomer ? editingCustomer.id : ''); });
-  if (dup) { toast('该电话已存在客户"' + dup.name + '"', 'error'); return; }
-
   var levelEl = document.querySelector('input[name="f-level"]:checked');
   var calcEl = document.querySelector('input[name="f-calc"]:checked');
   var fpEl = document.querySelector('input[name="f-fp"]:checked');
   var soace = (document.getElementById('f-soace').value || '').trim();
   var analysis = analyzeSOACE(soace);
-
-  var customerData = {
+  return {
     id: editingCustomer ? editingCustomer.id : uuid(),
     name: name, phone: phone,
     consultant: (DB.currentUser && DB.currentUser.role === '销售经理')
@@ -2437,6 +2988,19 @@ function submitForm() {
     solutions: analysis.solutions,
     createdAt: editingCustomer ? editingCustomer.createdAt : new Date().toISOString()
   };
+}
+
+function submitForm() {
+  var customerData = collectFormData();
+  if (!customerData.name) { toast('请填写客户姓名', 'error'); return; }
+  if (!customerData.phone) { toast('请填写电话号码', 'error'); return; }
+  var dup = DB.customers.find(function(c) { return c.phone === customerData.phone && c.id !== (editingCustomer ? editingCustomer.id : ''); });
+  if (dup && !_forceCreate) { showDuplicateDialog(dup, customerData); return; }
+  _forceCreate = false;
+  doSaveCustomer(customerData);
+}
+
+function doSaveCustomer(customerData) {
 
   // Auto-sync dealStatus with salesStage
   if (customerData.salesStage === '签约') {
@@ -2474,6 +3038,48 @@ function submitForm() {
     renderCustomerList();
     renderWorkbench();
   }
+}
+
+function showDuplicateDialog(dupCustomer, newData) {
+  var lastFU = dupCustomer.followUps && dupCustomer.followUps[0];
+  var lastFUInfo = lastFU ? (lastFU.time || '').slice(0, 10) + ' · ' + lastFU.method : '无跟进记录';
+  var html = '<div style="position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);padding:16px;" onclick="if(event.target===this)closeDupDialog()">' +
+    '<div class="dup-dialog-box" style="background:var(--bg);border-radius:16px;padding:24px 20px;max-width:380px;width:100%;">' +
+      '<div style="font-size:17px;font-weight:700;color:var(--red);margin-bottom:6px;">⚠️ 电话重复</div>' +
+      '<div style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">系统中已存在该电话号码的客户</div>' +
+      '<div class="dup-customer-info" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:16px;">' +
+        '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;">' + escHtml(dupCustomer.name) + '</div>' +
+        '<div style="font-size:12px;color:var(--text-dim);">顾问：' + escHtml(dupCustomer.consultant || '—') + '　等级：<span class="level-badge ' + dupCustomer.level + '" style="display:inline-block;min-width:20px;height:18px;line-height:18px;font-size:10px;">' + dupCustomer.level + '</span></div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">最近跟进：' + escHtml(lastFUInfo) + '</div>' +
+      '</div>' +
+      '<div class="dup-actions" style="display:flex;flex-direction:column;gap:8px;">' +
+        '<button onclick="closeDupDialog();closeForm();setTimeout(function(){openDetail(\'' + dupCustomer.id + '\')},200)" class="dup-btn" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;">👁 查看已有客户</button>' +
+        '<button onclick="mergeDuplicateData(\'' + dupCustomer.id + '\')" class="dup-btn" style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--gold);color:#111;font-size:14px;font-weight:600;cursor:pointer;">🔀 合并信息</button>' +
+        '<button onclick="closeDupDialog();_forceCreate=true;submitForm()" class="dup-btn" style="width:100%;padding:10px;border-radius:10px;border:none;background:var(--card2);color:var(--text-dim);font-size:13px;cursor:pointer;">仍然新建</button>' +
+      '</div></div></div>';
+  var overlay = document.getElementById('detail-overlay');
+  overlay.innerHTML = html;
+  overlay.style.display = 'block';
+}
+
+function closeDupDialog() {
+  document.getElementById('detail-overlay').style.display = 'none';
+}
+
+function mergeDuplicateData(dupId) {
+  var newData = collectFormData();
+  var dup = DB.customers.find(function(x) { return x.id === dupId; });
+  if (!dup) { toast('目标客户不存在', 'error'); closeDupDialog(); return; }
+  var mergedNote = '[合并自 ' + today() + '] ' + (newData.soace || '') + '\n备注：' + (newData.note || '');
+  dup.soace = (dup.soace || '') + '\n\n' + mergedNote;
+  dup.followUpNote = (dup.followUpNote || '') + '\n' + (newData.followUpNote || '');
+  if (newData.channel && !dup.channel) dup.channel = newData.channel;
+  if (newData.area && !dup.area) dup.area = newData.area;
+  addFollowUp(dup, '来访', '合并客户信息: ' + ((newData.note || newData.soace || '').slice(0, 80)), '');
+  addHistory(dup, '合并信息', '合并自新录入客户: ' + escRaw(newData.name));
+  saveDB(); toast('客户信息已合并到 "' + escRaw(dup.name) + '"', 'success');
+  closeDupDialog(); closeForm();
+  renderCustomerList(); renderWorkbench();
 }
 
 function closeForm() {
@@ -2685,9 +3291,10 @@ function renderStatListOverlay(filtered, label) {
       '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">' +
         stageTag(c.salesStage || '问询') + dealTag + priceInfo +
       '</div>' +
-      '<div style="margin-top:4px;font-size:11px;color:var(--text-dim);display:flex;gap:8px;flex-wrap:wrap;">' +
+      '<div style="margin-top:4px;font-size:11px;color:var(--text-dim);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
         (c.residence ? '<span>🏠 ' + escRaw(c.residence) + '</span>' : '') +
         followupMeta +
+        '<button class="card-qf-btn" data-qf-id="' + c.id + '">📝 跟进</button>' +
       '</div>' +
     '</div>';
   });
@@ -2703,13 +3310,15 @@ function renderStatListOverlay(filtered, label) {
   overlay.innerHTML = html;
   overlay.style.display = 'block';
 
-  overlay.querySelectorAll('.customer-card[data-id]').forEach(function(card) {
-    card.onclick = function() {
-      var id = card.dataset.id;
+  overlay.onclick = function(e) {
+    var qfBtn = e.target.closest('.card-qf-btn');
+    if (qfBtn) { e.stopPropagation(); showQuickFollowupOverlay(qfBtn.dataset.qfId); return; }
+    var card = e.target.closest('.customer-card[data-id]');
+    if (card) {
       overlay.style.display = 'none';
-      setTimeout(function() { openDetail(id); }, 80);
-    };
-  });
+      setTimeout(function() { openDetail(card.dataset.id); }, 80);
+    }
+  };
 }
 
 // ============================================================
@@ -3057,9 +3666,54 @@ function refreshNavForRole() {
   if (nav) nav.style.display = isManager ? '' : 'none';
 }
 
-function enterApp() { showTab('workbench'); }
+function enterApp() {
+  showTab('workbench');
+  setTimeout(function() { requestNotificationPermission(); }, 2000);
+  if (DB.settings && DB.settings.followupNotif) startNotificationTimer();
+}
 
 var _sessionCheckTimer = null;
+var _notifEnabled = false;
+var _notifTimer = null;
+
+function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') { _notifEnabled = true; return; }
+  if (Notification.permission === 'denied') { _notifEnabled = false; return; }
+  Notification.requestPermission().then(function(perm) { _notifEnabled = (perm === 'granted'); });
+}
+
+function checkFollowupNotifications() {
+  if (!_notifEnabled || !DB.settings || !DB.settings.followupNotif) return;
+  if (!DB.currentUser) return;
+  var todayStr = today();
+  var myList = DB.currentUser.role === '销售经理'
+    ? DB.customers.filter(function(c) { return !c.inPool; })
+    : DB.customers.filter(function(c) { return c.consultant === DB.currentUser.name && !c.inPool; });
+  var dueToday = myList.filter(function(c) { return c.followUpDate === todayStr; });
+  dueToday.forEach(function(c) {
+    try {
+      var n = new Notification('跟进提醒 · 中山御宸', {
+        body: c.name + ' — 需要今日跟进',
+        tag: 'followup-' + c.id,
+        requireInteraction: true
+      });
+      n.onclick = function() { window.focus(); n.close(); navigateTo('customers'); setTimeout(function() { openDetail(c.id); }, 400); };
+    } catch(e) {}
+  });
+}
+
+function startNotificationTimer() {
+  stopNotificationTimer();
+  _notifTimer = setInterval(function() {
+    if (document.hidden) checkFollowupNotifications();
+  }, 5 * 60 * 1000);
+  setTimeout(function() { checkFollowupNotifications(); }, 15000);
+}
+
+function stopNotificationTimer() {
+  if (_notifTimer) { clearInterval(_notifTimer); _notifTimer = null; }
+}
 function startSessionCheck() {
   if (_sessionCheckTimer) clearInterval(_sessionCheckTimer);
   _sessionCheckTimer = setInterval(function() {
@@ -3212,11 +3866,37 @@ function initApp() {
 
   document.getElementById('fab-add').onclick = function() { openForm(); };
   document.getElementById('fab-add2').onclick = function() { openForm(); };
+  document.getElementById('batch-toggle-btn').onclick = toggleBatchMode;
+  document.getElementById('batch-level').onclick = batchChangeLevel;
+  document.getElementById('batch-consultant').onclick = batchAssignConsultant;
+  document.getElementById('batch-pool-btn').onclick = batchMoveToPool;
+  document.getElementById('batch-delete-btn').onclick = batchDelete;
+  document.getElementById('batch-cancel-btn').onclick = toggleBatchMode;
+  document.getElementById('wb-view-list').onclick = function() {
+    workbenchView = 'list'; calendarSelectedDate = '';
+    document.getElementById('wb-view-list').classList.add('active');
+    document.getElementById('wb-view-cal').classList.remove('active');
+    renderWorkbench();
+  };
+  document.getElementById('wb-view-cal').onclick = function() {
+    workbenchView = 'calendar';
+    document.getElementById('wb-view-cal').classList.add('active');
+    document.getElementById('wb-view-list').classList.remove('active');
+    var now = new Date();
+    calendarYear = now.getFullYear(); calendarMonth = now.getMonth() + 1;
+    renderWorkbench();
+  };
   document.getElementById('logout-btn').onclick = doLogout;
   document.getElementById('detail-back').onclick = closeDetail;
   document.getElementById('form-back').onclick = closeForm;
   document.getElementById('search-input').addEventListener('input', renderCustomerList);
   document.getElementById('level-filter').addEventListener('change', renderCustomerList);
+  document.getElementById('adv-filter-btn').onclick = toggleAdvFilter;
+  document.getElementById('filter-channel').addEventListener('change', updateAdvFilter);
+  document.getElementById('filter-date-from').addEventListener('change', updateAdvFilter);
+  document.getElementById('filter-date-to').addEventListener('change', updateAdvFilter);
+  document.getElementById('filter-building').addEventListener('input', function() { filterBuilding = this.value.trim(); renderCustomerList(); });
+  document.getElementById('filter-clear').onclick = clearAdvFilter;
 
   var tabMine = document.getElementById('tab-mine');
   var tabPool = document.getElementById('tab-pool');
