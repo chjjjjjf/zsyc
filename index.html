@@ -2192,12 +2192,17 @@ function submitForm() {
   var newId = customerData.id;
   saveDB();
   toast(editingCustomer ? '修改已保存' : '客户添加成功', 'success');
-  closeForm();
-  renderCustomerList();
-  renderWorkbench();
-  // If new customer with 算价=是, open price calculator
+  // If new customer with 算价=是, keep form open and overlay calculator on top
   if (!editingCustomer && customerData.calculated) {
-    setTimeout(function() { openPriceCalc(newId); }, 200);
+    openPriceCalc(newId, function() {
+      closeForm();
+      renderCustomerList();
+      renderWorkbench();
+    });
+  } else {
+    closeForm();
+    renderCustomerList();
+    renderWorkbench();
   }
 }
 
@@ -2442,6 +2447,7 @@ function showAdminPanel() {
 
   var overlay = document.getElementById('admin-panel-overlay');
   overlay.innerHTML = html;
+  overlay.classList.remove('hidden');
   overlay.classList.add('show');
   overlay.style.display = 'flex';
   overlay.onclick = function(e) { if (e.target === overlay) closeAdminPanel(); };
@@ -2450,6 +2456,7 @@ function showAdminPanel() {
 
 function closeAdminPanel() {
   var o = document.getElementById('admin-panel-overlay');
+  o.classList.add('hidden');
   o.classList.remove('show');
   o.style.display = 'none';
 }
