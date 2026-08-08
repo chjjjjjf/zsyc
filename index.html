@@ -2432,6 +2432,17 @@ function submitForm() {
     createdAt: editingCustomer ? editingCustomer.createdAt : new Date().toISOString()
   };
 
+  // Auto-sync dealStatus with salesStage
+  if (customerData.salesStage === '签约') {
+    customerData.dealStatus = '签约';
+    if (!customerData.dealDate) customerData.dealDate = today();
+  } else if (customerData.salesStage === '认购') {
+    customerData.dealStatus = '认购';
+  } else {
+    customerData.dealStatus = '未成交';
+    customerData.dealDate = '';
+  }
+
   if (DB.currentUser && DB.currentUser.role === '置业顾问') {
     customerData.consultant = DB.currentUser.name;
   }
@@ -2643,8 +2654,8 @@ function renderStatListOverlay(filtered, label) {
       priceInfo = '<span style="font-size:12px;color:var(--gold);font-weight:600;">💰 ' + pParts.join(' · ') + '</span>';
     }
 
-    // Deal tag
-    var dealTag = c.dealStatus && c.dealStatus !== '未成交'
+    // Deal tag — only show when different from sales stage to avoid duplication
+    var dealTag = c.dealStatus && c.dealStatus !== '未成交' && c.dealStatus !== (c.salesStage || '问询')
       ? '<span style="background:rgba(46,204,113,0.15);color:var(--green);padding:2px 7px;border-radius:6px;font-size:12px;font-weight:600;">' + c.dealStatus + '</span>' : '';
 
     // Followup date
