@@ -1055,8 +1055,7 @@ function parseClipboard(text) {
   m = text.match(/(?:接待时间|接待时长|时长)[:：]\s*(\d+)/); if (m) r.visitDuration = m[1];
   if (/是否算价[:：]\s*是/.test(text)) r.calculated = true;
   else if (/是否算价[:：]\s*否/.test(text)) r.calculated = false;
-  if (/是否全流程[:：]\s*是/.test(text) || /全流程[:：]\s*是/.test(text)) r.fullProcess = true;
-  else if (/是否全流程[:：]\s*否/.test(text) || /全流程[:：]\s*否/.test(text)) r.fullProcess = false;
+  m = text.match(/^(?:是否全流程|全流程|全程跟进|流程)\S*[:：]\s*(.+)/m); if (m) { var fpv = m[1].trim(); if (/^否\s*$/.test(fpv)) { r.fullProcess = false; } else { r.fullProcess = true; r.fullProcessDetail = fpv.replace(/^是[：:\s]*/, ''); } }
   m = text.match(/(?:来访渠道|渠道)[:：]\s*(.+)/); if (m) {
     var raw = m[1].trim();
     r.channel = CHAN_MAP[raw] || (CHANNELS.find(function(c) { return raw.indexOf(c) !== -1; })) || raw;
@@ -1067,6 +1066,15 @@ function parseClipboard(text) {
   m = text.match(/(?:居住小区|小区)[:：]\s*(.+)/); if (m) r.residence = m[1].trim();
   m = text.match(/(?:对比项目|竞品)[:：]\s*(.+)/); if (m) r.competitor = m[1].trim();
   m = text.match(/(?:意向面积|面积)[:：]\s*(\d+)/); if (m) r.area = m[1];
+  var soaceIdx = text.search(/(?:客户情况|SOACE|客户描述)[:：]\s*/);
+  if (soaceIdx !== -1) {
+    var soaceMatch = text.match(/(?:客户情况|SOACE|客户描述)[:：]\s*/);
+    var soaceStart = soaceIdx + soaceMatch[0].length;
+    var soaceRest = text.slice(soaceStart);
+    var nextLabel = soaceRest.search(/\n[^\n:：]+[:：]/);
+    if (nextLabel !== -1) soaceRest = soaceRest.slice(0, nextLabel);
+    r.soace = soaceRest.trim();
+  }
   return r;
 }
 
@@ -1098,6 +1106,7 @@ function showParsePreview(parsed, count) {
     if (parsed[key] !== undefined) {
       var val = parsed[key];
       if (key === 'calculated' || key === 'fullProcess') val = val ? '是' : '否';
+      if (key === 'fullProcess' && parsed.fullProcessDetail) val += ' · ' + parsed.fullProcessDetail;
       html += '<div class="pp-row"><span class="pp-key">' + label + '</span><span class="pp-val">' + escRaw(String(val).slice(0, 100)) + '</span></div>';
     }
   });
@@ -1139,6 +1148,8 @@ function applyParsed(parsed) {
       r.closest('.radio-option').classList.toggle('active', parsed.fullProcess && r.value === 'true' || !parsed.fullProcess && r.value === 'false');
       r.checked = parsed.fullProcess && r.value === 'true' || !parsed.fullProcess && r.value === 'false';
     });
+    var fpDetailEl = document.getElementById('f-fullprocess-detail');
+    if (fpDetailEl) { fpDetailEl.value = parsed.fullProcessDetail || ''; fpDetailEl.style.display = parsed.fullProcess ? '' : 'none'; }
   }
   if (parsed.soace) {
     var ta = document.getElementById('f-soace');
@@ -1235,7 +1246,7 @@ function renderCustomerCard(c, extraHtml, hideQfBtn) {
     if (pp.area) parts.push(pp.area + '㎡');
     parts.push(pp.price + '元');
     if (pp.unitPrice != null) parts.push(pp.unitPrice.toFixed(2) + '元/㎡');
-    priceRow = '<div style="color:var(--gold);font-weight:600;padding-bottom:4px;">' + renderLabel('价') + ' ' + parts.join(' · ') + '</div>';
+    priceRow = '<div style="color:var(--gold);font-weight:600;padding-bottom:4px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + renderLabel('价') + ' ' + parts.join(' · ') + '</div>';
   }
 
   // Visit time + followup button on same row
@@ -2674,7 +2685,7 @@ function openDetail(id) {
       '<div class="info-item"><div class="info-label">电话号码</div><div class="info-value">' + escRaw(c.phone) + '</div></div>' +
       '<div class="info-item"><div class="info-label">是否算价</div><div class="info-value">' + (c.calculated ? (c.calculatedPrice && c.calculatedPrice.unitPrice ? '是 · ' + c.calculatedPrice.unitPrice.toFixed(2) + '元/㎡' : '是') : '否') + '</div></div>' +
       priceHtml +
-      '<div class="info-item"><div class="info-label">是否全流程</div><div class="info-value">' + (c.fullProcess ? '是' : '否') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">是否全流程</div><div class="info-value">' + (c.fullProcess ? '是' + (c.fullProcessDetail ? ' · ' + escRaw(c.fullProcessDetail) : '') : '否') + '</div></div>' +
       '<div class="info-item"><div class="info-label">职业</div><div class="info-value">' + escRaw(c.job || '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">年龄</div><div class="info-value">' + escRaw(c.age || '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">意向面积</div><div class="info-value">' + (c.area ? escRaw(c.area) + '㎡' : '—') + '</div></div>' +
@@ -2700,7 +2711,10 @@ function openDetail(id) {
       '<div class="info-item"><div class="info-label">录入时间</div><div class="info-value">' + (c.createdAt ? fDateTime(c.createdAt) : '—') + '</div></div>' +
       followupStatusHtml +
     '</div>' +
-    soaceHtml + resistanceHtml + noteHtml + followupHtml + historyHtml +
+    '<div class="soace-block" style="margin-top:8px;"><div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:8px;">📋 客户情况</div>' +
+      '<div style="font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.7;">' + (c.soace ? esc(c.soace) : '<span style="color:var(--text-dim);">暂无客户情况记录，点击编辑补充</span>') + '</div>' +
+    '</div>' +
+    resistanceHtml + noteHtml + followupHtml + historyHtml +
     '<div style="height:40px;"></div>';
 
   // Visibility
@@ -3102,11 +3116,13 @@ function openForm(prefill, customer) {
     '</div></div>' +
     '<div class="form-group"><label class="form-label">是否全流程</label><div class="radio-group">' +
       [{v:'true',l:'是'},{v:'false',l:'否'}].map(function(o) {
-        var checked = (customer && String(customer.fullProcess) === o.v) || (!customer && o.v === 'false') ? 'checked' : '';
-        var active = (customer && String(customer.fullProcess) === o.v) || (!customer && o.v === 'false') ? 'active' : '';
+        var checked = (customer && String(!!customer.fullProcess) === o.v) || (!customer && o.v === 'false') ? 'checked' : '';
+        var active = (customer && String(!!customer.fullProcess) === o.v) || (!customer && o.v === 'false') ? 'active' : '';
         return '<label class="radio-option ' + active + '"><input type="radio" name="f-fp" value="' + o.v + '" ' + checked + ' hidden>' + o.l + '</label>';
       }).join('') +
-    '</div></div>' +
+    '</div>' +
+    '<input type="text" id="f-fullprocess-detail" class="form-input" placeholder="全流程详情（如：售房部）" value="' + escHtml(customer && customer.fullProcessDetail || '') + '" style="margin-top:6px;' + (customer && customer.fullProcess ? '' : 'display:none;') + '">' +
+    '</div>' +
     '<div class="form-row">' +
       '<div class="form-group"><label class="form-label">职业</label><input type="text" id="f-job" class="form-input" placeholder="如：私企业主" value="' + escRaw(customer ? customer.job : '') + '"></div>' +
       '<div class="form-group"><label class="form-label">年龄</label><input type="text" id="f-age" class="form-input" placeholder="如：35左右" value="' + escRaw(customer ? customer.age : '') + '"></div>' +
@@ -3152,6 +3168,11 @@ function openForm(prefill, customer) {
         opt.classList.add('active');
         var inp = opt.querySelector('input[type="radio"]');
         if (inp) inp.checked = true;
+        // Toggle fullProcess detail input
+        if (inp && inp.name === 'f-fp') {
+          var detailEl = document.getElementById('f-fullprocess-detail');
+          if (detailEl) detailEl.style.display = inp.value === 'true' ? '' : 'none';
+        }
       });
     });
   });
@@ -3174,6 +3195,7 @@ function collectFormData() {
   var levelEl = document.querySelector('input[name="f-level"]:checked');
   var calcEl = document.querySelector('input[name="f-calc"]:checked');
   var fpEl = document.querySelector('input[name="f-fp"]:checked');
+  var fpDetail = (document.getElementById('f-fullprocess-detail').value || '').trim();
   var soace = (document.getElementById('f-soace').value || '').trim();
   var analysis = analyzeSOACE(soace);
   return {
@@ -3186,6 +3208,7 @@ function collectFormData() {
     level: levelEl ? levelEl.value : 'C',
     calculated: calcEl ? calcEl.value === 'true' : false,
     fullProcess: fpEl ? fpEl.value === 'true' : false,
+    fullProcessDetail: fpEl && fpEl.value === 'true' ? fpDetail : '',
     job: (document.getElementById('f-job').value || '').trim(),
     age: (document.getElementById('f-age').value || '').trim(),
     area: (document.getElementById('f-area').value || '').trim(),
