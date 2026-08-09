@@ -1771,15 +1771,16 @@ function renderSelfStats() {
       '<div class="bar-row bar-clickable" style="cursor:pointer;" data-stat-bar="normal"><span class="bar-label" style="color:var(--green)">正常</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(following / total * 100) + '%;background:var(--green)"></div></div><span class="bar-val">' + following + '人</span></div>' +
     '</div></div>';
 
-  // 团队人均参考（仅顾问角色显示，基于全员数据）
+  // 团队人均参考（仅顾问角色显示，比较本人与其他顾问的人均水平）
   var consList = [];
   Object.keys(DEMO_ACCOUNTS).forEach(function(n) { if (DEMO_ACCOUNTS[n].role === '置业顾问') consList.push(n); });
   if (DB.currentUser && DB.currentUser.role === '置业顾问' && consList.length >= 2) {
-    var allAssigned = DB.customers.filter(function(c) { return !c.inPool && consList.indexOf(c.consultant) !== -1; });
+    var allAssigned = DB.customers.filter(function(c) { return !c.inPool && consList.indexOf(c.consultant) !== -1 && c.consultant !== DB.currentUser.name; });
+    var peerCount = consList.length - 1;
     var teamTotal = allAssigned.length;
     var teamDeals = allAssigned.filter(function(c) { return c.dealStatus === '签约' || c.dealStatus === '认购'; }).length;
-    var avgCust = Math.round(teamTotal / consList.length);
-    var avgDeal = Math.round(teamDeals / consList.length);
+    var avgCust = peerCount > 0 ? Math.round(teamTotal / peerCount) : 0;
+    var avgDeal = peerCount > 0 ? Math.round(teamDeals / peerCount) : 0;
     var avgRate = teamTotal > 0 ? Math.round(teamDeals / teamTotal * 100) : 0;
     var myTotal = customers.length;
     var myDeals = dealCount;
@@ -3056,7 +3057,6 @@ function openForm(prefill, customer) {
   document.getElementById('form-page').classList.add('active');
 
   var now = new Date();
-  var defFollowUp = new Date(now.getTime() + 7 * 86400000);
   var defVisit = now.toISOString().slice(0, 16);
   var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
   var consVal = customer ? customer.consultant : (DB.currentUser ? DB.currentUser.name : '');
@@ -3134,7 +3134,7 @@ function openForm(prefill, customer) {
       }).join('') +
     '</div></div>' +
     '<div class="form-group"><label class="form-label">成交日期</label><input type="date" id="f-dealdate" class="form-input" value="' + (customer ? (customer.dealDate || '') : '') + '"></div>' +
-    '<div class="form-group"><label class="form-label">跟进日期</label><input type="date" id="f-followupdate" class="form-input" value="' + (customer ? customer.followUpDate : fDate(defFollowUp)) + '"></div>' +
+    '<div class="form-group"><label class="form-label">跟进日期</label><input type="date" id="f-followupdate" class="form-input" value="' + (customer ? (customer.followUpDate || '') : '') + '"></div>' +
     '<div class="form-group"><label class="form-label">跟进说明</label>' +
       '<textarea id="f-note2" class="form-textarea" style="min-height:80px;" placeholder="本次跟进内容或计划...">' + escRaw(customer ? customer.followUpNote : '') + '</textarea></div>' +
     '<button class="form-submit" id="form-submit">' + (customer ? '保存修改' : '添加客户') + '</button>' +
