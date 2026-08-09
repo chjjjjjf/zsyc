@@ -308,9 +308,8 @@ body { display: flex; flex-direction: column; }
 /* WORKBENCH */
 .workbench-section { background: var(--card); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03); border-left: 2px solid var(--gold-dim); }
 .wb-header { padding: 12px 14px; font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; color: var(--gold); }
-.wb-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
-.wb-item:last-child { border-bottom: none; }
-.wb-item:active { background: var(--gold-light); }
+.wb-item { padding: 0; cursor: pointer; }
+.wb-item .customer-card { margin-bottom: 0; }
 
 .hidden { display: none !important; }
 </style>
@@ -395,6 +394,17 @@ body { display: flex; flex-direction: column; }
         <option value="C">C级</option>
         <option value="C-">C-级</option>
         <option value="D">D级</option>
+      </select>
+    </div>
+    <div style="padding:0 12px 8px;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:11px;color:var(--text-dim);">排序:</span>
+      <select id="sort-select" style="padding:5px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:#fff;color:var(--text);">
+        <option value="level-desc">等级 ↓</option>
+        <option value="level-asc">等级 ↑</option>
+        <option value="followup">跟进日期</option>
+        <option value="created-desc">创建日期 ↓</option>
+        <option value="created-asc">创建日期 ↑</option>
+        <option value="name">姓名</option>
       </select>
     </div>
     <div id="adv-filter-bar" style="display:none;padding:0 12px 10px;display:none;flex-wrap:wrap;gap:8px;align-items:flex-end;">
@@ -1167,7 +1177,9 @@ function getFollowupStatus(c) {
   return { cls: 'tag-overdue', text: renderLabel('逾') + ' ' + Math.abs(d) + '天' };
 }
 
-function renderCustomerCard(c) {
+function renderCustomerCard(c, extraHtml, hideQfBtn) {
+  extraHtml = extraHtml || '';
+  hideQfBtn = hideQfBtn || false;
   var status = getFollowupStatus(c);
   var daysNew = daysBetween(today(), c.createdAt ? c.createdAt.slice(0, 10) : today());
   var isNew = daysNew <= 2;
@@ -1228,14 +1240,15 @@ function renderCustomerCard(c) {
 
   // Visit time + followup button on same row
   var bottomRow = '';
+  var qfBtnHtml = hideQfBtn ? '' : '<button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:12px;padding:3px 8px;">📝 跟进</button>';
   if (c.visitTime) {
     bottomRow = '<div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 4px;">' +
       '<span>' + renderLabel('接待') + ' ' + fDate(c.visitTime) + '</span>' +
-      '<button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:12px;padding:3px 8px;">📝 跟进</button>' +
+      qfBtnHtml +
     '</div>';
-  } else {
+  } else if (!hideQfBtn) {
     bottomRow = '<div style="text-align:right;padding:0 0 4px;">' +
-      '<button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:12px;padding:3px 8px;">📝 跟进</button>' +
+      qfBtnHtml +
     '</div>';
   }
 
@@ -1255,10 +1268,13 @@ function renderCustomerCard(c) {
     '<div class="card-tags">' + statusTag + stageBadge + dealBadge + residenceBadge + '</div>' +
     priceRow +
     bottomRow +
+    extraHtml +
   '</div>';
 }
 
 var currentCustTab = 'mine';
+var currentSort = 'level-desc';
+var LEVEL_ORDER = { A: 6, B: 5, 'C+': 4, C: 3, 'C-': 2, D: 1 };
 var batchMode = false;
 var batchSelected = {};
 
@@ -1415,12 +1431,19 @@ function renderCustomerList() {
     var matchDt = !to || (c.createdAt && c.createdAt.slice(0, 10) <= to);
     return matchL && matchS && matchCh && matchBld && matchDf && matchDt;
   });
-  list.sort(function(a, b) {
-    var ad = daysBetween(a.followUpDate || '9999', today());
-    var bd = daysBetween(b.followUpDate || '9999', today());
-    if (ad !== bd) return bd - ad;
-    return (b.createdAt || '').localeCompare(a.createdAt || '');
-  });
+  if (currentSort === 'level-desc') {
+    list.sort(function(a, b) { return (LEVEL_ORDER[b.level] || 0) - (LEVEL_ORDER[a.level] || 0); });
+  } else if (currentSort === 'level-asc') {
+    list.sort(function(a, b) { return (LEVEL_ORDER[a.level] || 0) - (LEVEL_ORDER[b.level] || 0); });
+  } else if (currentSort === 'followup') {
+    list.sort(function(a, b) { return (a.followUpDate || '9999').localeCompare(b.followUpDate || '9999'); });
+  } else if (currentSort === 'created-desc') {
+    list.sort(function(a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
+  } else if (currentSort === 'created-asc') {
+    list.sort(function(a, b) { return (a.createdAt || '').localeCompare(b.createdAt || ''); });
+  } else if (currentSort === 'name') {
+    list.sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'zh'); });
+  }
   var container = document.getElementById('customer-list');
   var tabElMine = document.getElementById('tab-mine');
   var tabElPool = document.getElementById('tab-pool');
@@ -1526,21 +1549,9 @@ function renderWorkbench() {
     html += '<div class="section-title">🔥 今日待回访 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(231,76,60,0.2);color:var(--red)">' + todayFollowups.length + '</span></div>';
     html += '<div class="workbench-section"><div class="wb-list">';
     todayFollowups.slice(0, 5).forEach(function(c) {
-      var infoExtras = [];
-      if (c.channel) infoExtras.push(renderLabel('渠') + ' ' + escRaw(c.channel));
-      if (c.area) infoExtras.push(renderLabel('需') + ' ' + escRaw(c.area) + '㎡');
-      if (c.calculatedPrice && c.calculatedPrice.price) {
-        var pp = c.calculatedPrice;
-        var pParts = [(pp.building||'') + fmtUnit(pp.unit||'')];
-        if (pp.area) pParts.push(pp.area + '㎡');
-        pParts.push(pp.price + '元');
-        if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
-        infoExtras.push(renderLabel('价') + ' ' + pParts.join('·'));
-      }
-      var isMgr = DB.currentUser && DB.currentUser.role === '销售经理';
-      var consultantLine = isMgr && c.consultant ? '<span style="font-size:10px;color:var(--gold);">顾问：' + escRaw(c.consultant) + '</span>' : '';
-      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '需今日跟进') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:6px;font-size:12px;background:rgba(192,57,43,0.12);color:var(--red);flex-shrink:0;">🔥 今日</span></div>';
+      var fuNote = c.followUpNote || c.note || '需今日跟进';
+      var fuRow = '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0 0;margin-top:4px;border-top:1px dashed var(--border);"><span style="font-size:12px;color:var(--text);">跟进内容: ' + escRaw(fuNote) + '</span><button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:11px;padding:3px 8px;">📝 跟进</button></div>';
+      html += '<div class="wb-item" data-id="' + c.id + '">' + renderCustomerCard(c, fuRow, true) + '</div>';
     });
     html += '</div></div>';
   }
@@ -1550,22 +1561,9 @@ function renderWorkbench() {
     dueSoon.forEach(function(c) {
       var d = daysBetween(c.followUpDate, todayStr);
       var label = d === 0 ? '今天' : Math.abs(d) + '天后';
-      var infoExtras = [];
-      if (c.channel) infoExtras.push(renderLabel('渠') + ' ' + escRaw(c.channel));
-      if (c.area) infoExtras.push(renderLabel('需') + ' ' + escRaw(c.area) + '㎡');
-      if (c.competitor) infoExtras.push(renderLabel('比') + ' ' + escRaw(c.competitor));
-      if (c.calculatedPrice && c.calculatedPrice.price) {
-        var pp = c.calculatedPrice;
-        var pParts = [(pp.building||'') + fmtUnit(pp.unit||'')];
-        if (pp.area) pParts.push(pp.area + '㎡');
-        pParts.push(pp.price + '元');
-        if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
-        infoExtras.push(renderLabel('价') + ' ' + pParts.join('·'));
-      }
-      var isMgr = DB.currentUser && DB.currentUser.role === '销售经理';
-      var consultantLine = isMgr && c.consultant ? '<span style="font-size:10px;color:var(--gold);">顾问：' + escRaw(c.consultant) + '</span>' : '';
-      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:6px;font-size:12px;background:rgba(243,156,18,0.12);color:var(--yellow);flex-shrink:0;">🔔 ' + label + '</span></div>';
+      var fuNote = c.followUpNote || c.note || '';
+      var fuRow = '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0 0;margin-top:4px;border-top:1px dashed var(--border);"><span style="font-size:12px;color:var(--text);">跟进内容: ' + escRaw(fuNote) + ' · 🔔 ' + label + '</span><button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:11px;padding:3px 8px;">📝 跟进</button></div>';
+      html += '<div class="wb-item" data-id="' + c.id + '">' + renderCustomerCard(c, fuRow, true) + '</div>';
     });
     html += '</div></div>';
   }
@@ -1574,22 +1572,9 @@ function renderWorkbench() {
     html += '<div class="workbench-section"><div class="wb-list">';
     overdue.forEach(function(c) {
       var d = daysBetween(c.followUpDate, todayStr);
-      var infoExtras = [];
-      if (c.channel) infoExtras.push(renderLabel('渠') + ' ' + escRaw(c.channel));
-      if (c.area) infoExtras.push(renderLabel('需') + ' ' + escRaw(c.area) + '㎡');
-      if (c.competitor) infoExtras.push(renderLabel('比') + ' ' + escRaw(c.competitor));
-      if (c.calculatedPrice && c.calculatedPrice.price) {
-        var pp = c.calculatedPrice;
-        var pParts = [(pp.building||'') + fmtUnit(pp.unit||'')];
-        if (pp.area) pParts.push(pp.area + '㎡');
-        pParts.push(pp.price + '元');
-        if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
-        infoExtras.push(renderLabel('价') + ' ' + pParts.join('·'));
-      }
-      var isMgr = DB.currentUser && DB.currentUser.role === '销售经理';
-      var consultantLine = isMgr && c.consultant ? '<span style="font-size:10px;color:var(--gold);">顾问：' + escRaw(c.consultant) + '</span>' : '';
-      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">逾期 ' + d + ' 天 · ' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:6px;font-size:12px;background:rgba(192,57,43,0.12);color:var(--red);flex-shrink:0;">⏸ ' + d + '天</span></div>';
+      var fuNote = c.followUpNote || c.note || '';
+      var fuRow = '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0 0;margin-top:4px;border-top:1px dashed var(--border);"><span style="font-size:12px;color:var(--text);">跟进内容: ' + escRaw(fuNote) + ' · 逾期' + Math.abs(d) + '天</span><button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:11px;padding:3px 8px;">📝 跟进</button></div>';
+      html += '<div class="wb-item" data-id="' + c.id + '">' + renderCustomerCard(c, fuRow, true) + '</div>';
     });
     html += '</div></div>';
   }
@@ -1619,7 +1604,11 @@ function renderWorkbench() {
 
   // Event delegation for workbench items
   document.querySelectorAll('.wb-item').forEach(function(item) {
-    item.addEventListener('click', function() { openDetail(item.dataset.id); });
+    item.addEventListener('click', function(e) {
+      var qfBtn = e.target.closest('.card-qf-btn');
+      if (qfBtn) { e.stopPropagation(); showQuickFollowupOverlay(qfBtn.dataset.qfId); return; }
+      openDetail(item.dataset.id);
+    });
   });
 }
 
@@ -1765,7 +1754,7 @@ function renderSelfStats() {
     '<div class="perf-grid" id="self-perf-grid">' +
       '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="all"><div class="n">' + customers.length + '</div><div class="l">来访组数</div><div class="stat-tap">点击查看</div></div>' +
       '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="deal"><div class="n">' + dealCount + '</div><div class="l">成交(认购+签约)</div><div class="stat-tap">点击查看</div></div>' +
-      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="all"><div class="n">' + dealRate + '%</div><div class="l">成交率</div><div class="stat-tap">点击查看全部</div></div>' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="deal"><div class="n">' + dealRate + '%</div><div class="l">成交率</div><div class="stat-tap">点击查看成交</div></div>' +
     '</div>' +
     '<div class="perf-grid" id="self-perf-grid2">' +
       '<div class="perf-card perf-clickable" style="cursor:pointer;" data-self-stat="signed"><div class="n" style="color:var(--green)">' + signedCount + '</div><div class="l">签约</div><div class="stat-tap">点击查看</div></div>' +
@@ -1783,7 +1772,7 @@ function renderSelfStats() {
   var consList = [];
   Object.keys(DEMO_ACCOUNTS).forEach(function(n) { if (DEMO_ACCOUNTS[n].role === '置业顾问') consList.push(n); });
   if (DB.currentUser && DB.currentUser.role === '置业顾问' && consList.length >= 2) {
-    var allAssigned = DB.customers.filter(function(c) { return !c.inPool; });
+    var allAssigned = DB.customers.filter(function(c) { return !c.inPool && consList.indexOf(c.consultant) !== -1; });
     var teamTotal = allAssigned.length;
     var teamDeals = allAssigned.filter(function(c) { return c.dealStatus === '签约' || c.dealStatus === '认购'; }).length;
     var avgCust = Math.round(teamTotal / consList.length);
@@ -1907,7 +1896,7 @@ function renderTeamStats() {
     '<div class="perf-grid" id="team-perf-grid">' +
       '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="visit"><div class="n">' + all.length + '</div><div class="l">总来访组数</div><div class="stat-tap">点击选择时段</div></div>' +
       '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="deal2"><div class="n">' + totalDeal + '</div><div class="l">总成交</div><div class="stat-tap">点击选择时段</div></div>' +
-      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="all"><div class="n">' + totalRate + '%</div><div class="l">整体成交率</div><div class="stat-tap">点击查看全部</div></div>' +
+      '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="teamRate"><div class="n">' + totalRate + '%</div><div class="l">整体成交率</div><div class="stat-tap">点击查看成交</div></div>' +
     '</div>' +
     '<div class="section-title">👥 每位顾问情况 <span style="font-size:11px;color:var(--text-dim);">点击卡片查看详情</span></div>' +
     (teamHtml || '<div class="pool-empty">暂无客户数据</div>') +
@@ -1918,7 +1907,7 @@ function renderTeamStats() {
   document.getElementById('stats-scroll').querySelectorAll('.perf-clickable').forEach(function(card) {
     card.addEventListener('click', function() {
       var s = card.dataset.teamStat;
-      if (s === 'all') showStatList(99, '所有');
+      if (s === 'teamRate') showStatList(99, 'deal');
       else if (s === 'visit') showTeamTimeOptions('visit', '来访');
       else if (s === 'deal2') showTeamTimeOptions('deal', '成交');
     });
@@ -4309,6 +4298,10 @@ function initApp() {
   document.getElementById('form-back').onclick = closeForm;
   document.getElementById('search-input').addEventListener('input', renderCustomerList);
   document.getElementById('level-filter').addEventListener('change', renderCustomerList);
+  document.getElementById('sort-select').addEventListener('change', function() {
+    currentSort = this.value;
+    renderCustomerList();
+  });
   document.getElementById('adv-filter-btn').onclick = toggleAdvFilter;
   document.getElementById('filter-channel').addEventListener('change', updateAdvFilter);
   document.getElementById('filter-date-from').addEventListener('change', updateAdvFilter);
