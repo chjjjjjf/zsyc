@@ -1178,8 +1178,8 @@ function getFollowupStatus(c) {
 }
 
 function renderCustomerCard(c, extraHtml, hideQfBtn) {
-  extraHtml = extraHtml || '';
-  hideQfBtn = hideQfBtn || false;
+  if (typeof extraHtml !== 'string') extraHtml = '';
+  hideQfBtn = hideQfBtn === true;
   var status = getFollowupStatus(c);
   var daysNew = daysBetween(today(), c.createdAt ? c.createdAt.slice(0, 10) : today());
   var isNew = daysNew <= 2;
@@ -1546,11 +1546,12 @@ function renderWorkbench() {
   '</div>';
 
   if (todayFollowups.length > 0) {
-    html += '<div class="section-title">🔥 今日待回访 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(231,76,60,0.2);color:var(--red)">' + todayFollowups.length + '</span></div>';
-    html += '<div class="workbench-section"><div class="wb-list">';
+    html += '<div class="section-title" style="color:var(--green);border-left-color:var(--green);">🔥 今日待回访 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(91,140,90,0.2);color:var(--green)">' + todayFollowups.length + '</span></div>';
+    html += '<div class="workbench-section" style="border-left-color:var(--green);"><div class="wb-list">';
     todayFollowups.slice(0, 5).forEach(function(c) {
       var fuNote = c.followUpNote || c.note || '需今日跟进';
-      var fuRow = '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0 0;margin-top:4px;border-top:1px dashed var(--border);"><span style="font-size:12px;color:var(--text);">跟进内容: ' + escRaw(fuNote) + '</span><button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:11px;padding:3px 8px;">📝 跟进</button></div>';
+      var fuLabel = '<span style="background:rgba(91,140,90,0.12);color:var(--green);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;flex-shrink:0;">跟进内容</span>';
+      var fuRow = '<div style="display:flex;align-items:center;gap:6px;padding:6px 0 0;margin-top:4px;border-top:1px dashed var(--border);">' + fuLabel + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escRaw(fuNote) + '</span><button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:11px;padding:3px 8px;flex-shrink:0;">📝 跟进</button></div>';
       html += '<div class="wb-item" data-id="' + c.id + '">' + renderCustomerCard(c, fuRow, true) + '</div>';
     });
     html += '</div></div>';
@@ -1562,18 +1563,20 @@ function renderWorkbench() {
       var d = daysBetween(c.followUpDate, todayStr);
       var label = d === 0 ? '今天' : Math.abs(d) + '天后';
       var fuNote = c.followUpNote || c.note || '';
-      var fuRow = '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0 0;margin-top:4px;border-top:1px dashed var(--border);"><span style="font-size:12px;color:var(--text);">跟进内容: ' + escRaw(fuNote) + ' · 🔔 ' + label + '</span><button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:11px;padding:3px 8px;">📝 跟进</button></div>';
+      var fuLabel = '<span style="background:rgba(100,100,100,0.1);color:#666;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;flex-shrink:0;">跟进内容</span>';
+      var fuRow = '<div style="display:flex;align-items:center;gap:6px;padding:6px 0 0;margin-top:4px;border-top:1px dashed var(--border);">' + fuLabel + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escRaw(fuNote) + ' · 🔔 ' + label + '</span><button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:11px;padding:3px 8px;flex-shrink:0;">📝 跟进</button></div>';
       html += '<div class="wb-item" data-id="' + c.id + '">' + renderCustomerCard(c, fuRow, true) + '</div>';
     });
     html += '</div></div>';
   }
   if (overdue.length > 0) {
-    html += '<div class="section-title">⚠️ 逾期提醒 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(231,76,60,0.2);color:var(--red)">' + overdue.length + '</span></div>';
-    html += '<div class="workbench-section"><div class="wb-list">';
+    html += '<div class="section-title" style="color:var(--red);border-left-color:var(--red);">⚠️ 逾期提醒 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(192,57,43,0.2);color:var(--red)">' + overdue.length + '</span></div>';
+    html += '<div class="workbench-section" style="border-left-color:var(--red);"><div class="wb-list">';
     overdue.forEach(function(c) {
       var d = daysBetween(c.followUpDate, todayStr);
       var fuNote = c.followUpNote || c.note || '';
-      var fuRow = '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0 0;margin-top:4px;border-top:1px dashed var(--border);"><span style="font-size:12px;color:var(--text);">跟进内容: ' + escRaw(fuNote) + ' · 逾期' + Math.abs(d) + '天</span><button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:11px;padding:3px 8px;">📝 跟进</button></div>';
+      var fuLabel = '<span style="background:rgba(192,57,43,0.12);color:var(--red);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;flex-shrink:0;">跟进内容</span>';
+      var fuRow = '<div style="display:flex;align-items:center;gap:6px;padding:6px 0 0;margin-top:4px;border-top:1px dashed var(--border);">' + fuLabel + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escRaw(fuNote) + ' · 逾期' + Math.abs(d) + '天</span><button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:11px;padding:3px 8px;flex-shrink:0;">📝 跟进</button></div>';
       html += '<div class="wb-item" data-id="' + c.id + '">' + renderCustomerCard(c, fuRow, true) + '</div>';
     });
     html += '</div></div>';
