@@ -20,6 +20,9 @@
   --text-dim: #7a7568;
   --green: #5b8c5a;
   --blue: #5b7a9a;
+  --purple: #8e6ab3;
+  --teal: #3d8b7d;
+  --copper: #b87020;
   --gray: #999;
   --orange: #c7852e;
   --red: #c0392b;
@@ -92,11 +95,7 @@ body { display: flex; flex-direction: column; }
 .level-badge.C- { background: #555; }
 .level-badge.D { background: #1a1a1a; font-size: 14px; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.tag { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 6px; font-size: 12px; }
-.tag-overdue { background: rgba(192,57,43,0.12); color: var(--red); }
-.tag-following { background: rgba(91,140,90,0.12); color: var(--green); }
-.tag-new { background: rgba(184,148,46,0.12); color: var(--gold); }
-.tag-due { background: rgba(184,150,14,0.12); color: var(--yellow); }
+.tag { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 6px; font-size: 12px; color: var(--text); }
 .card-meta { font-size: 13px; color: var(--text-dim); display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; align-items: center; }
 .card-qf-btn { padding: 3px 10px; background: var(--gold); color: #fff; border: none; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; margin-left: auto; transition: opacity 0.2s; }
 .card-qf-btn:active { opacity: 0.7; }
@@ -181,6 +180,8 @@ body { display: flex; flex-direction: column; }
 .team-cell { background: var(--card2); border-radius: 10px; padding: 8px 6px; text-align: center; }
 .team-cell .n { font-size: 16px; font-weight: 700; color: var(--text); }
 .team-cell .l { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.team-cell-clickable { cursor: pointer; transition: transform 0.1s; }
+.team-cell-clickable:active { transform: scale(0.95); }
 
 /* PERF */
 .perf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
@@ -202,6 +203,12 @@ body { display: flex; flex-direction: column; }
 .bar-track { flex: 1; height: 20px; background: var(--card2); border-radius: 10px; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 10px; transition: width 0.5s; }
 .bar-val { font-size: 12px; color: var(--text-dim); width: 28px; text-align: right; flex-shrink: 0; }
+
+/* MSG OVERLAY */
+.msg-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.4); display: flex; align-items: flex-start; justify-content: center; padding: 20px; }
+.msg-panel { background: #fff; border-radius: 16px; width: 100%; max-width: 480px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; margin-top: 60px; }
+.msg-panel-header { padding: 16px 20px; background: linear-gradient(135deg, #B8942E, #d4a843); color: #fff; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.msg-panel-body { flex: 1; overflow-y: auto; padding: 16px; }
 
 /* PROFILE */
 .profile-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
@@ -484,6 +491,8 @@ body { display: flex; flex-direction: column; }
   </div>
 </div>
 <div id="detail-overlay"></div>
+<div id="msg-push-overlay"></div>
+<div id="msg-inbox-overlay"></div>
 <div id="price-calc-overlay" style="display:none;position:fixed;inset:0;z-index:99996;"></div>
 <div id="admin-panel-overlay" class="hidden" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99997;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;"></div>
 
@@ -602,14 +611,15 @@ var SALES_STAGES = [
 ];
 var FOLLOWUP_METHODS = ['来电','来访','去电','微信','短信'];
 var DEFAULT_SETTINGS = { autoPoolDays: 30, followupReminder: 7 };
-var CHANNELS = ['自访','中介','老带新','线上','电话','渠道外展'];
+var CHANNELS = ['自访','自渠','中介','全民','老带新','新媒体'];
 var CHAN_MAP = {
   '自来':'自访','自己':'自访','路过':'自访','避雨':'自访','打卡':'自访',
+  '自渠':'自渠','自拓':'自渠','自建渠道':'自渠',
   '中介':'中介','代理':'中介','分销':'中介',
+  '全民':'全民','全员':'全民','推荐':'全民',
   '老带新':'老带新','老介新':'老带新','朋友介绍':'老带新','转介绍':'老带新',
-  '线上':'线上','网络':'线上','微信':'线上',
-  '电话':'电话','电销':'电话',
-  '外展':'渠道外展','渠道':'渠道外展','展业':'渠道外展'
+  '线上':'新媒体','网络':'新媒体','微信':'新媒体','抖音':'新媒体','小红书':'新媒体',
+  '新媒体':'新媒体','电话':'自访','电销':'自访'
 };
 
 var ADMIN_CODE = 'yuchen2026';
@@ -1129,13 +1139,32 @@ function applyParsed(parsed) {
 // ============================================================
 // 5. RENDER FUNCTIONS
 // ============================================================
+
+// Unified label color mapping — each keyword gets a unique, non-repeating color
+var LABEL_COLORS = {
+  '渠':   { bg: 'rgba(91,122,154,0.12)', fg: 'var(--blue)' },
+  '需':   { bg: 'rgba(142,106,179,0.12)', fg: 'var(--purple)' },
+  '比':   { bg: 'rgba(61,139,125,0.12)', fg: 'var(--teal)' },
+  '居':   { bg: 'rgba(184,112,32,0.12)',  fg: 'var(--copper)' },
+  '接待': { bg: 'rgba(199,133,46,0.12)', fg: 'var(--orange)' },
+  '价':   { bg: 'rgba(184,148,46,0.12)', fg: 'var(--gold)' },
+  '余':   { bg: 'rgba(91,140,90,0.12)',  fg: 'var(--green)' },
+  '逾':   { bg: 'rgba(192,57,43,0.12)',  fg: 'var(--red)' },
+  '状态': { bg: 'rgba(150,150,150,0.1)',  fg: '#666' }
+};
+
+function renderLabel(keyword, extraStyle) {
+  var c = LABEL_COLORS[keyword] || { bg: 'rgba(150,150,150,0.1)', fg: '#666' };
+  return '<span style="background:' + c.bg + ';color:' + c.fg + ';padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;' + (extraStyle || '') + '">' + keyword + '</span>';
+}
+
 function getFollowupStatus(c) {
   if (!c.followUpDate) return { cls: 'tag-following', text: '跟进中' };
   var d = daysBetween(c.followUpDate, today());
-  if (d > 0) return { cls: 'tag-overdue', text: '过期' + d + '天' };
+  if (d > 0) return { cls: 'tag-due', text: renderLabel('余') + ' ' + d + '天' };
   if (d === 0) return { cls: 'tag-new', text: '今天待跟进' };
-  if (d >= -3) return { cls: 'tag-due', text: '即将到期' };
-  return { cls: 'tag-following', text: Math.abs(d) + '天后' };
+  if (d >= -3) return { cls: 'tag-overdue', text: renderLabel('逾') + ' ' + Math.abs(d) + '天' };
+  return { cls: 'tag-overdue', text: renderLabel('逾') + ' ' + Math.abs(d) + '天' };
 }
 
 function renderCustomerCard(c) {
@@ -1148,18 +1177,45 @@ function renderCustomerCard(c) {
   var consultantHeader = isManager
     ? '<span style="font-size:12px;color:var(--gold);font-weight:500;flex-shrink:0;">' + escRaw(c.consultant) + '</span>' : '';
 
-  // Status tag
+  // Status tag — followup uses renderLabel directly for visual consistency with 渠/需/比
   var statusTag = '';
   if (c.inPool) {
     statusTag = '<span class="tag" style="background:rgba(184,148,46,0.15);color:var(--gold);font-weight:600;">🏊 公共池</span>';
-  } else if (isNew && !status.text.includes('过期')) {
-    statusTag = '<span class="tag tag-new">🆕 新登记</span>';
+  } else if (isNew && !c.followUpDate) {
+    statusTag = '<span class="tag" style="background:rgba(46,204,113,0.12);color:var(--green);font-weight:600;">🆕 新登记</span>';
   } else {
-    statusTag = '<span class="tag ' + status.cls + '">' + status.text + '</span>';
+    statusTag = '<span>' + status.text + '</span>';
   }
 
-  // Price info: 房源 · 面积 · 总价 · 单价
-  var priceInfo = '';
+  // Deal status badge (认购/签约 shown alongside status)
+  var dealBadge = '';
+  if (!c.inPool && (c.dealStatus === '认购' || c.dealStatus === '签约')) {
+    var dealClr = c.dealStatus === '签约' ? '#2ecc71' : '#f39c12';
+    dealBadge = '<span style="background:' + dealClr + '1a;color:' + dealClr + ';padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">' + c.dealStatus + '</span>';
+  }
+
+  // Stage badge with 状态 prefix
+  var stageInfo = SALES_STAGES.find(function(s) { return s.key === c.salesStage; }) || SALES_STAGES[0];
+  var stageBadge = '<span class="stage-badge stage-' + c.salesStage + '" style="display:inline-flex;align-items:center;gap:3px;">' +
+    renderLabel('状态', 'background:' + stageInfo.color + '1a;color:' + stageInfo.color + ';') +
+    stageInfo.icon + ' ' + c.salesStage + '</span>';
+
+  // Residence badge
+  var residenceBadge = '';
+  if (c.residence) {
+    residenceBadge = '<span>' + renderLabel('居') + ' ' + escRaw(c.residence) + '</span>';
+  }
+
+  // Info row: channel (渠 badge), demand area, competitor
+  var infoRow = '';
+  var infoParts = [];
+  if (c.channel) infoParts.push('<span>' + renderLabel('渠') + ' ' + escRaw(c.channel) + '</span>');
+  if (c.area) infoParts.push('<span>' + renderLabel('需') + ' ' + escRaw(c.area) + '㎡</span>');
+  if (c.competitor) infoParts.push('<span>' + renderLabel('比') + ' ' + escRaw(c.competitor) + '</span>');
+  if (infoParts.length > 0) infoRow = '<div style="margin-bottom:4px;display:flex;flex-wrap:wrap;gap:8px;">' + infoParts.join('') + '</div>';
+
+  // Price info (standalone row)
+  var priceRow = '';
   if (c.calculatedPrice && c.calculatedPrice.price) {
     var pp = c.calculatedPrice;
     var parts = [];
@@ -1167,29 +1223,20 @@ function renderCustomerCard(c) {
     if (pp.area) parts.push(pp.area + '㎡');
     parts.push(pp.price + '元');
     if (pp.unitPrice != null) parts.push(pp.unitPrice.toFixed(2) + '元/㎡');
-    priceInfo = '<span style="font-size:11px;color:var(--gold);font-weight:600;">💰 ' + parts.join(' · ') + '</span>';
+    priceRow = '<div style="color:var(--gold);font-weight:600;padding-bottom:4px;">' + renderLabel('价') + ' ' + parts.join(' · ') + '</div>';
   }
 
-  // Info row: channel, demand area, competitor
-  var infoRow = '';
-  var infoParts = [];
-  if (c.channel) infoParts.push('📌 ' + escRaw(c.channel));
-  if (c.area) infoParts.push('<span style="background:rgba(91,122,154,0.12);color:var(--blue);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">需</span> ' + escRaw(c.area) + '㎡');
-  if (c.competitor) infoParts.push('<span style="background:rgba(91,140,90,0.12);color:var(--green);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">比</span> ' + escRaw(c.competitor));
-  if (infoParts.length > 0) infoRow = '<div style="font-size:13px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:8px;">' + infoParts.map(function(p) { return '<span>' + p + '</span>'; }).join('') + '</div>';
-
-  var stageInfo = SALES_STAGES.find(function(s) { return s.key === c.salesStage; }) || SALES_STAGES[0];
-  var followupMeta = '';
-  if (c.followUpDate || (c.followUps && c.followUps[0])) {
-    var fuParts = [];
-    if (c.followUpDate) {
-      var fd = daysBetween(c.followUpDate, today());
-      fuParts.push('<span style="color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>');
-    }
-    if (c.followUps && c.followUps[0]) {
-      fuParts.push('<span class="method-tag method-' + c.followUps[0].method + '">' + c.followUps[0].method + '</span>');
-    }
-    followupMeta = '<span style="font-size:11px;">' + fuParts.join(' · ') + '</span>';
+  // Visit time + followup button on same row
+  var bottomRow = '';
+  if (c.visitTime) {
+    bottomRow = '<div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 4px;">' +
+      '<span>' + renderLabel('接待') + ' ' + fDate(c.visitTime) + '</span>' +
+      '<button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:12px;padding:3px 8px;">📝 跟进</button>' +
+    '</div>';
+  } else {
+    bottomRow = '<div style="text-align:right;padding:0 0 4px;">' +
+      '<button class="card-qf-btn" data-qf-id="' + c.id + '" style="font-size:12px;padding:3px 8px;">📝 跟进</button>' +
+    '</div>';
   }
 
   var revisitHtml = c.revisitCount ? '<span class="revisit-badge">复访🔥 ' + c.revisitCount + '次</span>' : '';
@@ -1205,17 +1252,9 @@ function renderCustomerCard(c) {
       '<div class="card-phone">' + escRaw(maskPhone(c.phone)) + '</div>' +
     '</div>' +
     infoRow +
-    '<div class="card-tags">' + statusTag +
-      priceInfo +
-    '</div>' +
-    '<div class="card-meta">' +
-      '<span class="stage-badge stage-' + c.salesStage + '">' + stageInfo.icon + ' ' + c.salesStage + '</span>' +
-      (c.residence ? '<span><span style="background:rgba(184,148,46,0.12);color:var(--gold);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">居</span> ' + escRaw(c.residence) + '</span>' : '') +
-      '<span>' + (c.createdAt ? c.createdAt.slice(5, 10) : '') + ' 录入</span>' +
-      followupMeta +
-      '<button class="card-qf-btn" data-qf-id="' + c.id + '">📝 跟进</button>' +
-    '</div>' +
-    (c.visitTime ? '<div style="font-size:12px;color:var(--text-dim);padding:0 0 4px;">接待：' + fDate(c.visitTime) + '</div>' : '') +
+    '<div class="card-tags">' + statusTag + stageBadge + dealBadge + residenceBadge + '</div>' +
+    priceRow +
+    bottomRow +
   '</div>';
 }
 
@@ -1432,7 +1471,7 @@ function renderWorkbench() {
   var todayFollowups = customers.filter(function(c) {
     if (c.inPool) return false;
     if (!c.followUpDate) return false;
-    return c.followUpDate <= todayStr;
+    return c.followUpDate === todayStr;
   });
 
   var funnelData = SALES_STAGES.map(function(s) {
@@ -1451,11 +1490,11 @@ function renderWorkbench() {
   });
   funnelHtml += '</div>';
 
-  var overdue = customers.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; });
+  var overdue = customers.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) < 0; });
   var dueSoon = customers.filter(function(c) {
     if (!c.followUpDate) return false;
     var d = daysBetween(c.followUpDate, todayStr);
-    return d >= 0 && d <= 3 && !(c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0);
+    return d > 0 && d <= 3;
   });
   var levelA = customers.filter(function(c) { return c.level === 'A'; }).length;
   var levelB = customers.filter(function(c) { return c.level === 'B'; }).length;
@@ -1488,69 +1527,69 @@ function renderWorkbench() {
     html += '<div class="workbench-section"><div class="wb-list">';
     todayFollowups.slice(0, 5).forEach(function(c) {
       var infoExtras = [];
-      if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
-      if (c.area) infoExtras.push('<span style="background:rgba(91,122,154,0.12);color:var(--blue);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">需</span> ' + escRaw(c.area) + '㎡');
+      if (c.channel) infoExtras.push(renderLabel('渠') + ' ' + escRaw(c.channel));
+      if (c.area) infoExtras.push(renderLabel('需') + ' ' + escRaw(c.area) + '㎡');
       if (c.calculatedPrice && c.calculatedPrice.price) {
         var pp = c.calculatedPrice;
         var pParts = [(pp.building||'') + fmtUnit(pp.unit||'')];
         if (pp.area) pParts.push(pp.area + '㎡');
         pParts.push(pp.price + '元');
         if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
-        infoExtras.push('💰' + pParts.join('·'));
+        infoExtras.push(renderLabel('价') + ' ' + pParts.join('·'));
       }
       var isMgr = DB.currentUser && DB.currentUser.role === '销售经理';
       var consultantLine = isMgr && c.consultant ? '<span style="font-size:10px;color:var(--gold);">顾问：' + escRaw(c.consultant) + '</span>' : '';
       var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '需今日跟进') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔥 今日</span></div>';
-    });
-    html += '</div></div>';
-  }
-  if (overdue.length > 0) {
-    html += '<div class="section-title">⚠️ 逾期未跟进 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(231,76,60,0.2);color:var(--red)">' + overdue.length + '</span></div>';
-    html += '<div class="workbench-section"><div class="wb-list">';
-    overdue.forEach(function(c) {
-      var d = daysBetween(c.followUpDate, todayStr);
-      var infoExtras = [];
-      if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
-      if (c.area) infoExtras.push('<span style="background:rgba(91,122,154,0.12);color:var(--blue);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">需</span> ' + escRaw(c.area) + '㎡');
-      if (c.competitor) infoExtras.push('<span style="background:rgba(91,140,90,0.12);color:var(--green);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">比</span> ' + escRaw(c.competitor));
-      if (c.calculatedPrice && c.calculatedPrice.price) {
-        var pp = c.calculatedPrice;
-        var pParts = [(pp.building||'') + fmtUnit(pp.unit||'')];
-        if (pp.area) pParts.push(pp.area + '㎡');
-        pParts.push(pp.price + '元');
-        if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
-        infoExtras.push('💰' + pParts.join('·'));
-      }
-      var isMgr = DB.currentUser && DB.currentUser.role === '销售经理';
-      var consultantLine = isMgr && c.consultant ? '<span style="font-size:10px;color:var(--gold);">顾问：' + escRaw(c.consultant) + '</span>' : '';
-      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">逾期 ' + d + ' 天 · ' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-overdue">⏸ ' + d + '天</span></div>';
+      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '需今日跟进') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:6px;font-size:12px;background:rgba(192,57,43,0.12);color:var(--red);flex-shrink:0;">🔥 今日</span></div>';
     });
     html += '</div></div>';
   }
   if (dueSoon.length > 0) {
-    html += '<div class="section-title">🔔 即将到期 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(243,156,18,0.2);color:var(--yellow)">' + dueSoon.length + '</span></div>';
+    html += '<div class="section-title">⏰ 跟进临近 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(243,156,18,0.2);color:var(--yellow)">' + dueSoon.length + '</span></div>';
     html += '<div class="workbench-section"><div class="wb-list">';
     dueSoon.forEach(function(c) {
       var d = daysBetween(c.followUpDate, todayStr);
       var label = d === 0 ? '今天' : Math.abs(d) + '天后';
       var infoExtras = [];
-      if (c.channel) infoExtras.push('📌' + escRaw(c.channel));
-      if (c.area) infoExtras.push('<span style="background:rgba(91,122,154,0.12);color:var(--blue);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">需</span> ' + escRaw(c.area) + '㎡');
-      if (c.competitor) infoExtras.push('<span style="background:rgba(91,140,90,0.12);color:var(--green);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">比</span> ' + escRaw(c.competitor));
+      if (c.channel) infoExtras.push(renderLabel('渠') + ' ' + escRaw(c.channel));
+      if (c.area) infoExtras.push(renderLabel('需') + ' ' + escRaw(c.area) + '㎡');
+      if (c.competitor) infoExtras.push(renderLabel('比') + ' ' + escRaw(c.competitor));
       if (c.calculatedPrice && c.calculatedPrice.price) {
         var pp = c.calculatedPrice;
         var pParts = [(pp.building||'') + fmtUnit(pp.unit||'')];
         if (pp.area) pParts.push(pp.area + '㎡');
         pParts.push(pp.price + '元');
         if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
-        infoExtras.push('💰' + pParts.join('·'));
+        infoExtras.push(renderLabel('价') + ' ' + pParts.join('·'));
       }
       var isMgr = DB.currentUser && DB.currentUser.role === '销售经理';
       var consultantLine = isMgr && c.consultant ? '<span style="font-size:10px;color:var(--gold);">顾问：' + escRaw(c.consultant) + '</span>' : '';
       var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
-      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span class="tag tag-due">🔔 ' + label + '</span></div>';
+      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:6px;font-size:12px;background:rgba(243,156,18,0.12);color:var(--yellow);flex-shrink:0;">🔔 ' + label + '</span></div>';
+    });
+    html += '</div></div>';
+  }
+  if (overdue.length > 0) {
+    html += '<div class="section-title">⚠️ 逾期提醒 <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:rgba(231,76,60,0.2);color:var(--red)">' + overdue.length + '</span></div>';
+    html += '<div class="workbench-section"><div class="wb-list">';
+    overdue.forEach(function(c) {
+      var d = daysBetween(c.followUpDate, todayStr);
+      var infoExtras = [];
+      if (c.channel) infoExtras.push(renderLabel('渠') + ' ' + escRaw(c.channel));
+      if (c.area) infoExtras.push(renderLabel('需') + ' ' + escRaw(c.area) + '㎡');
+      if (c.competitor) infoExtras.push(renderLabel('比') + ' ' + escRaw(c.competitor));
+      if (c.calculatedPrice && c.calculatedPrice.price) {
+        var pp = c.calculatedPrice;
+        var pParts = [(pp.building||'') + fmtUnit(pp.unit||'')];
+        if (pp.area) pParts.push(pp.area + '㎡');
+        pParts.push(pp.price + '元');
+        if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
+        infoExtras.push(renderLabel('价') + ' ' + pParts.join('·'));
+      }
+      var isMgr = DB.currentUser && DB.currentUser.role === '销售经理';
+      var consultantLine = isMgr && c.consultant ? '<span style="font-size:10px;color:var(--gold);">顾问：' + escRaw(c.consultant) + '</span>' : '';
+      var rvHtml = c.revisitCount ? '<span class="revisit-badge" style="font-size:10px;padding:1px 5px;">复访🔥' + c.revisitCount + '</span>' : '';
+      html += '<div class="wb-item" data-id="' + c.id + '"><span class="level-badge ' + c.level + '" style="flex-shrink:0">' + c.level + '</span><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;"><span>' + escRaw(c.name) + '</span>' + rvHtml + '</div>' + consultantLine + '<div style="font-size:12px;color:var(--text-dim);">逾期 ' + d + ' 天 · ' + escRaw(c.followUpNote || c.note || '') + '</div>' + (infoExtras.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + infoExtras.join(' ') + '</div>' : '') + '</div><span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:6px;font-size:12px;background:rgba(192,57,43,0.12);color:var(--red);flex-shrink:0;">⏸ ' + d + '天</span></div>';
     });
     html += '</div></div>';
   }
@@ -1720,7 +1759,7 @@ function renderSelfStats() {
     return '<div class="bar-row bar-clickable" style="cursor:pointer;" data-stat-bar="channel" data-stat-val="' + escHtml(e[0]) + '"><span class="bar-label">' + escRaw(e[0]) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(e[1] / total * 100) + '%;background:var(--gold)"></div></div><span class="bar-val">' + e[1] + '人</span></div>';
   }).join('');
   var todayStr = today();
-  var overdue = customers.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; }).length;
+  var overdue = customers.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) < 0; }).length;
   var following = customers.length - overdue;
   var html = '<div class="chart-title" style="padding:14px 16px 4px;">📊 我的业绩</div>' +
     '<div class="perf-grid" id="self-perf-grid">' +
@@ -1797,7 +1836,7 @@ function renderSelfStats() {
       var barVal = bar.dataset.statVal;
       if (barType === 'level' || barType === 'channel') showStatList(99, barVal || '');
       else if (barType === 'overdue') showStatList(99, '逾期');
-      else if (barType === 'normal') showStatList(99, 'normal');
+      else if (barType === 'normal') showStatList(99, '正常');
     });
   });
 }
@@ -1836,7 +1875,7 @@ function renderTeamStats() {
     var rate = list.length ? Math.round(deal / list.length * 100) : 0;
     var counts = { A: 0, B: 0, 'C+': 0, C: 0, 'C-': 0, D: 0 };
     list.forEach(function(c) { if (counts[c.level] !== undefined) counts[c.level]++; else counts[c.level] = 1; });
-    var overdueN = list.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; }).length;
+    var overdueN = list.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) < 0; }).length;
     var rateColor = rate >= 30 ? 'var(--green)' : (rate >= 15 ? 'var(--gold)' : 'var(--text-dim)');
     var emptyClass = list.length === 0 ? ' style="opacity:0.5;"' : '';
     return '<div class="team-card"' + emptyClass + ' style="cursor:pointer;">' +
@@ -1845,15 +1884,15 @@ function renderTeamStats() {
         '<span class="team-rate" style="color:' + rateColor + '">成交率 ' + rate + '%</span>' +
       '</div>' +
       '<div class="team-grid">' +
-        '<div class="team-cell"><div class="n">' + list.length + '</div><div class="l">来访组数</div></div>' +
-        '<div class="team-cell"><div class="n" style="color:var(--gold)">' + deal + '</div><div class="l">成交数</div></div>' +
-        '<div class="team-cell"><div class="n" style="color:var(--red)">' + overdueN + '</div><div class="l">逾期跟进</div></div>' +
-        '<div class="team-cell"><div class="n" style="color:#e74c3c">' + counts.A + '</div><div class="l">A级</div></div>' +
-        '<div class="team-cell"><div class="n" style="color:#e67e22">' + counts.B + '</div><div class="l">B级</div></div>' +
-        '<div class="team-cell"><div class="n" style="color:var(--gold)">' + counts['C+'] + '</div><div class="l">C+级</div></div>' +
-        '<div class="team-cell"><div class="n" style="color:#888">' + counts.C + '</div><div class="l">C级</div></div>' +
-        '<div class="team-cell"><div class="n" style="color:#555">' + counts['C-'] + '</div><div class="l">C-级</div></div>' +
-        '<div class="team-cell"><div class="n" style="color:#1a1a1a">' + counts.D + '</div><div class="l">D级</div></div>' +
+        '<div class="team-cell team-cell-clickable" data-cons="' + escRaw(name) + '" data-dim="all"><div class="n">' + list.length + '</div><div class="l">来访组数</div></div>' +
+        '<div class="team-cell team-cell-clickable" data-cons="' + escRaw(name) + '" data-dim="deal"><div class="n" style="color:var(--gold)">' + deal + '</div><div class="l">成交数</div></div>' +
+        '<div class="team-cell team-cell-clickable" data-cons="' + escRaw(name) + '" data-dim="overdue"><div class="n" style="color:var(--red)">' + overdueN + '</div><div class="l">逾期跟进</div></div>' +
+        '<div class="team-cell team-cell-clickable" data-cons="' + escRaw(name) + '" data-dim="level-A"><div class="n" style="color:#e74c3c">' + counts.A + '</div><div class="l">A级</div></div>' +
+        '<div class="team-cell team-cell-clickable" data-cons="' + escRaw(name) + '" data-dim="level-B"><div class="n" style="color:#e67e22">' + counts.B + '</div><div class="l">B级</div></div>' +
+        '<div class="team-cell team-cell-clickable" data-cons="' + escRaw(name) + '" data-dim="level-C+"><div class="n" style="color:var(--gold)">' + counts['C+'] + '</div><div class="l">C+级</div></div>' +
+        '<div class="team-cell team-cell-clickable" data-cons="' + escRaw(name) + '" data-dim="level-C"><div class="n" style="color:#888">' + counts.C + '</div><div class="l">C级</div></div>' +
+        '<div class="team-cell team-cell-clickable" data-cons="' + escRaw(name) + '" data-dim="level-C-"><div class="n" style="color:#555">' + counts['C-'] + '</div><div class="l">C-级</div></div>' +
+        '<div class="team-cell team-cell-clickable" data-cons="' + escRaw(name) + '" data-dim="level-D"><div class="n" style="color:#1a1a1a">' + counts.D + '</div><div class="l">D级</div></div>' +
       '</div>' +
       '<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">签约 ' + signed + ' · 认购 ' + (deal - signed) + ' · 未成交 ' + (list.length - deal) + '</div>' +
     '</div>';
@@ -1885,11 +1924,20 @@ function renderTeamStats() {
     });
   });
 
-  // Event delegation for team consultant cards
-  document.getElementById('stats-scroll').querySelectorAll('.team-card').forEach(function(card) {
-    card.addEventListener('click', function() {
-      var nameEl = card.querySelector('.team-name');
+  // Event delegation for team consultant cards: head click → all customers
+  document.getElementById('stats-scroll').querySelectorAll('.team-card-head').forEach(function(head) {
+    head.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var nameEl = head.querySelector('.team-name');
       if (nameEl) showConsultantCustomers(nameEl.textContent.trim());
+    });
+  });
+
+  // Event delegation for team stat cells: dimension-specific drill-down
+  document.getElementById('stats-scroll').querySelectorAll('.team-cell-clickable').forEach(function(cell) {
+    cell.addEventListener('click', function(e) {
+      e.stopPropagation();
+      showConsultantCustomersByDim(cell.dataset.cons, cell.dataset.dim);
     });
   });
 }
@@ -1919,11 +1967,7 @@ function renderAnalysis() {
   if (isManager) allCustomers.forEach(function(c) { if (c.consultant) consultantSet[c.consultant] = true; });
   var consultantNames = Object.keys(consultantSet).sort();
 
-  var total = allCustomers.length;
-  var signedCount = allCustomers.filter(function(c) { return c.dealStatus === '签约'; }).length;
-  var subsCount = allCustomers.filter(function(c) { return c.dealStatus === '认购'; }).length;
-  var poolCount = allCustomers.filter(function(c) { return c.inPool; }).length;
-  var revisitCount = allCustomers.filter(function(c) { return (c.revisitCount || 0) >= 2; }).length;
+  var revisitCount = allCustomers.filter(function(c) { return (c.revisitCount || 0) >= 1; }).length;
 
   var levelChips = ['ALL', 'A', 'B', 'C+', 'C', 'C-', 'D'].map(function(lv) {
     var col = lv === 'ALL' ? 'var(--gold)' : { A: '#e74c3c', B: '#e67e22', 'C+': 'var(--gold)', C: '#888', 'C-': '#555', D: '#1a1a1a' }[lv];
@@ -1954,7 +1998,7 @@ function renderAnalysis() {
     if (analysisFilter.consultant !== 'ALL' && c.consultant !== analysisFilter.consultant) return false;
     if (analysisFilter.deal !== 'ALL' && (c.dealStatus || '未成交') !== analysisFilter.deal) return false;
     if (analysisFilter.stage !== 'ALL' && (c.salesStage || '问询') !== analysisFilter.stage) return false;
-    if (analysisFilter.revisit === 'ONLY' && (c.revisitCount || 0) < 2) return false;
+    if (analysisFilter.revisit === 'ONLY' && (c.revisitCount || 0) < 1) return false;
     return true;
   });
   customers.sort(function(a, b) {
@@ -1977,14 +2021,14 @@ function renderAnalysis() {
   var filterText = filterDesc.length ? '（' + filterDesc.join(' · ') + '）' : '';
 
   var showRevisit = analysisFilter.revisit === 'ONLY';
-  function renderRevisitBlock(c) {
+  var renderRevisitBlock = function(c) {
     var rc = c.revisitCount || 0;
     var fus = (c.followUps || []).slice().reverse().slice(0, 5);
     var items = fus.length > 0
       ? fus.map(function(f) { return '· ' + (f.time ? f.time.slice(0, 10) : '') + ' ' + (f.method || '') + '：' + (f.content || '（无备注）'); }).join('<br>')
       : '暂无跟进记录';
     return '<div style="margin:-4px 12px 10px;padding:8px 10px;background:#fff8ec;border-left:3px solid #ff6b35;border-radius:0 0 6px 6px;font-size:13px;color:#7a5c10;line-height:1.6;">🔥 复访 <strong>' + rc + '</strong> 次　跟进记录：<br>' + items + '</div>';
-  }
+  };
 
   var listHtml = customers.length > 0
     ? customers.map(function(c) { return renderCustomerCard(c) + (showRevisit ? renderRevisitBlock(c) : ''); }).join('')
@@ -1992,33 +2036,16 @@ function renderAnalysis() {
 
   var html =
     '<div style="padding:14px 16px;font-size:16px;font-weight:700;color:var(--gold);">📋 客户梳理表</div>' +
-    '<div class="perf-grid" style="padding:0 16px;">' +
-      '<div class="perf-card" style="cursor:pointer;" data-anal="all"><div class="n" style="color:var(--gold)">' + total + '</div><div class="l">全部客户</div><div class="stat-tap">点击查看</div></div>' +
-      '<div class="perf-card" style="cursor:pointer;" data-anal="signed"><div class="n" style="color:#2ecc71">' + signedCount + '</div><div class="l">已签约</div><div class="stat-tap">点击查看</div></div>' +
-      '<div class="perf-card" style="cursor:pointer;" data-anal="subs"><div class="n" style="color:#f39c12">' + subsCount + '</div><div class="l">已认购</div><div class="stat-tap">点击查看</div></div>' +
-      '<div class="perf-card" style="cursor:pointer;" data-anal="revisit"><div class="n" style="color:var(--gold)">' + revisitCount + '</div><div class="l">复访</div><div class="stat-tap">点击查看</div></div>' +
-    '</div>' +
+    renderComparisonTable() +
     '<div style="padding:4px 16px 0;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;">按等级</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + levelChips + '</div></div>' +
     (consultantNames.length > 1 ? '<div style="padding:12px 16px 0;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;">按顾问</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + consultantChips + '</div></div>' : '') +
     '<div style="padding:12px 16px 0;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;">按成交状态</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + dealChips + '</div></div>' +
     '<div style="padding:12px 16px 0;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;">按销售阶段</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + stageChips + '</div></div>' +
     '<div style="padding:12px 16px 0;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;">按复访</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">' + revisitChips + '</div></div>' +
-    renderComparisonTable() +
     '<div class="section-title" style="margin-top:16px;padding:0 16px;">📇 客户列表' + filterText + ' · 共 ' + customers.length + ' 位</div>' +
     listHtml;
 
   document.getElementById('analysis-scroll').innerHTML = html;
-
-  // Event delegation for perf cards
-  document.getElementById('analysis-scroll').querySelectorAll('.perf-card[data-anal]').forEach(function(card) {
-    card.addEventListener('click', function() {
-      var anal = card.dataset.anal;
-      if (anal === 'all') { setAnalysisFilter('level', 'ALL'); setAnalysisFilter('consultant', 'ALL'); setAnalysisFilter('deal', 'ALL'); setAnalysisFilter('stage', 'ALL'); setAnalysisFilter('revisit', 'ALL'); renderAnalysis(); }
-      else if (anal === 'signed') { setAnalysisFilter('level', 'ALL'); setAnalysisFilter('consultant', 'ALL'); setAnalysisFilter('deal', '签约'); setAnalysisFilter('stage', 'ALL'); setAnalysisFilter('revisit', 'ALL'); renderAnalysis(); }
-      else if (anal === 'subs') { setAnalysisFilter('level', 'ALL'); setAnalysisFilter('consultant', 'ALL'); setAnalysisFilter('deal', '认购'); setAnalysisFilter('stage', 'ALL'); setAnalysisFilter('revisit', 'ALL'); renderAnalysis(); }
-      else if (anal === 'revisit') { setAnalysisFilter('level', 'ALL'); setAnalysisFilter('consultant', 'ALL'); setAnalysisFilter('deal', 'ALL'); setAnalysisFilter('stage', 'ALL'); setAnalysisFilter('revisit', 'ONLY'); renderAnalysis(); }
-    });
-  });
 
   // Event delegation for customer cards (supports quick follow-up button)
   document.getElementById('analysis-scroll').onclick = function(e) {
@@ -2030,66 +2057,67 @@ function renderAnalysis() {
 }
 
 // === Comparison Table ===
-function getComparisonData() {
+var _compY1, _compM1, _compY2, _compM2;
+
+function getComparisonData(y1, m1, y2, m2) {
   var now = new Date();
-  var thisY = now.getFullYear();
-  var thisM = now.getMonth() + 1;
-  var lastY = thisM === 1 ? thisY - 1 : thisY;
-  var lastMo = thisM === 1 ? 12 : thisM - 1;
+  if (y1 == null) { y1 = now.getFullYear(); m1 = now.getMonth() + 1; }
+  if (y2 == null) { y2 = m1 === 1 ? y1 - 1 : y1; m2 = m1 === 1 ? 12 : m1 - 1; }
 
   function fmtYM(y, m) { return y + '-' + (m < 10 ? '0' : '') + m; }
   function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
 
-  var thisStart = fmtYM(thisY, thisM) + '-01';
-  var thisEnd = fmtYM(thisY, thisM) + '-' + (daysInMonth(thisY, thisM) < 10 ? '0' : '') + daysInMonth(thisY, thisM);
-  var lastStart = fmtYM(lastY, lastMo) + '-01';
-  var lastEnd = fmtYM(lastY, lastMo) + '-' + (daysInMonth(lastY, lastMo) < 10 ? '0' : '') + daysInMonth(lastY, lastMo);
+  var start1 = fmtYM(y1, m1) + '-01';
+  var end1 = fmtYM(y1, m1) + '-' + (daysInMonth(y1, m1) < 10 ? '0' : '') + daysInMonth(y1, m1);
+  var start2 = fmtYM(y2, m2) + '-01';
+  var end2 = fmtYM(y2, m2) + '-' + (daysInMonth(y2, m2) < 10 ? '0' : '') + daysInMonth(y2, m2);
 
   var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
   var customers = isManager ? DB.customers : getMyCustomers();
 
-  var newThis = customers.filter(function(c) { return c.createdAt >= thisStart && c.createdAt <= thisEnd; }).length;
-  var newLast = customers.filter(function(c) { return c.createdAt >= lastStart && c.createdAt <= lastEnd; }).length;
+  var new1 = customers.filter(function(c) { return c.createdAt >= start1 && c.createdAt <= end1; }).length;
+  var new2 = customers.filter(function(c) { return c.createdAt >= start2 && c.createdAt <= end2; }).length;
 
-  var visitThis = 0, visitLast = 0;
+  var visit1 = 0, visit2 = 0;
   customers.forEach(function(c) {
     (c.followUps || []).forEach(function(f) {
       if (f.method === '来访' && f.time) {
         var d = f.time.slice(0, 10);
-        if (d >= thisStart && d <= thisEnd) visitThis++;
-        if (d >= lastStart && d <= lastEnd) visitLast++;
+        if (d >= start1 && d <= end1) visit1++;
+        if (d >= start2 && d <= end2) visit2++;
       }
     });
   });
 
-  var subThis = customers.filter(function(c) { return c.dealStatus === '认购' && c.dealDate && c.dealDate >= thisStart && c.dealDate <= thisEnd; }).length;
-  var subLast = customers.filter(function(c) { return c.dealStatus === '认购' && c.dealDate && c.dealDate >= lastStart && c.dealDate <= lastEnd; }).length;
+  var sub1 = customers.filter(function(c) { return c.dealStatus === '认购' && c.dealDate && c.dealDate >= start1 && c.dealDate <= end1; }).length;
+  var sub2 = customers.filter(function(c) { return c.dealStatus === '认购' && c.dealDate && c.dealDate >= start2 && c.dealDate <= end2; }).length;
 
-  var signThis = customers.filter(function(c) { return c.dealStatus === '签约' && c.dealDate && c.dealDate >= thisStart && c.dealDate <= thisEnd; }).length;
-  var signLast = customers.filter(function(c) { return c.dealStatus === '签约' && c.dealDate && c.dealDate >= lastStart && c.dealDate <= lastEnd; }).length;
+  var sign1 = customers.filter(function(c) { return c.dealStatus === '签约' && c.dealDate && c.dealDate >= start1 && c.dealDate <= end1; }).length;
+  var sign2 = customers.filter(function(c) { return c.dealStatus === '签约' && c.dealDate && c.dealDate >= start2 && c.dealDate <= end2; }).length;
 
-  var dealThis = subThis + signThis;
-  var dealLast = subLast + signLast;
+  var deal1 = sub1 + sign1;
+  var deal2 = sub2 + sign2;
 
-  var rateThisV = newThis > 0 ? dealThis / newThis * 100 : 0;
-  var rateLastV = newLast > 0 ? dealLast / newLast * 100 : 0;
+  var rate1 = new1 > 0 ? deal1 / new1 * 100 : 0;
+  var rate2 = new2 > 0 ? deal2 / new2 * 100 : 0;
 
   return {
-    thisLabel: thisY + '年' + thisM + '月',
-    lastLabel: lastY + '年' + lastMo + '月',
+    label1: y1 + '年' + m1 + '月',
+    label2: y2 + '年' + m2 + '月',
     rows: [
-      { label: '新增客户', thisV: newThis, lastV: newLast },
-      { label: '来访量', thisV: visitThis, lastV: visitLast },
-      { label: '认购数', thisV: subThis, lastV: subLast },
-      { label: '签约数', thisV: signThis, lastV: signLast },
-      { label: '成交总数', thisV: dealThis, lastV: dealLast },
-      { label: '成交率', thisV: rateThisV, lastV: rateLastV, suffix: '%', decimals: 1 }
+      { label: '新增客户', v1: new1, v2: new2 },
+      { label: '来访量', v1: visit1, v2: visit2 },
+      { label: '认购数', v1: sub1, v2: sub2 },
+      { label: '签约数', v1: sign1, v2: sign2 },
+      { label: '成交总数', v1: deal1, v2: deal2 },
+      { label: '成交率', v1: rate1, v2: rate2, suffix: '%', decimals: 1 }
     ]
   };
 }
 
 function renderComparisonTable() {
-  var d = getComparisonData();
+  var y1 = _compY1, m1 = _compM1, y2 = _compY2, m2 = _compM2;
+  var d = getComparisonData(y1, m1, y2, m2);
   function arrow(tv, lv) {
     if (tv > lv) return '<span style="color:#2ecc71">↑</span>';
     if (tv < lv) return '<span style="color:#e74c3c">↓</span>';
@@ -2112,32 +2140,128 @@ function renderComparisonTable() {
     var dec = r.decimals || 0, suf = r.suffix || '';
     return '<tr>' +
       '<td style="padding:8px 12px;font-size:13px;color:var(--text);border-bottom:1px solid var(--border);">' + escHtml(r.label) + '</td>' +
-      '<td style="padding:8px 12px;font-size:13px;color:var(--text);text-align:center;border-bottom:1px solid var(--border);">' + fmtVal(r.thisV, dec, suf) + '</td>' +
-      '<td style="padding:8px 12px;font-size:13px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">' + fmtVal(r.lastV, dec, suf) + '</td>' +
-      '<td style="padding:8px 12px;font-size:13px;text-align:center;border-bottom:1px solid var(--border);">' + arrow(r.thisV, r.lastV) + ' ' + changeStr(r.thisV, r.lastV, dec, suf) + '</td>' +
+      '<td style="padding:8px 12px;font-size:13px;color:var(--text);text-align:center;border-bottom:1px solid var(--border);">' + fmtVal(r.v1, dec, suf) + '</td>' +
+      '<td style="padding:8px 12px;font-size:13px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">' + fmtVal(r.v2, dec, suf) + '</td>' +
+      '<td style="padding:8px 12px;font-size:13px;text-align:center;border-bottom:1px solid var(--border);">' + arrow(r.v1, r.v2) + ' ' + changeStr(r.v1, r.v2, dec, suf) + '</td>' +
     '</tr>';
   }).join('');
 
+  var bodyVisible = _compY1 != null ? 'block' : 'none';
   return '<div style="margin:16px 16px 0;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;">' +
-    '<div style="padding:12px 14px;font-size:14px;font-weight:600;color:var(--gold);border-bottom:1px solid var(--border);">📊 月度数据对比 · ' + escHtml(d.thisLabel) + ' vs ' + escHtml(d.lastLabel) + '</div>' +
+    '<div id="monthly-comp-toggle" style="padding:12px 14px;font-size:14px;font-weight:600;color:var(--gold);cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;" onclick="var t=document.getElementById(\'monthly-comp-body\');var a=document.getElementById(\'monthly-comp-arrow\');if(t.style.display===\'none\'){t.style.display=\'block\';a.textContent=\'▾\';}else{t.style.display=\'none\';a.textContent=\'▸\';}">' +
+    '<span>📊 月度数据对比 · ' + escHtml(d.label1) + ' vs ' + escHtml(d.label2) + '</span><span style="display:flex;align-items:center;gap:8px;"><span style="font-size:20px;cursor:pointer;padding:0 4px;" onclick="event.stopPropagation();showMonthPicker()" title="更换月份">📅</span><span id="monthly-comp-arrow">' + (bodyVisible === 'block' ? '▾' : '▸') + '</span></span>' +
+    '</div>' +
+    '<div id="monthly-comp-body" style="display:' + bodyVisible + ';">' +
     '<table style="width:100%;border-collapse:collapse;">' +
     '<thead><tr>' +
       '<th style="padding:8px 12px;font-size:11px;color:var(--text-dim);text-align:left;border-bottom:1px solid var(--border);">指标</th>' +
-      '<th style="padding:8px 12px;font-size:11px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">本月</th>' +
-      '<th style="padding:8px 12px;font-size:11px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">上月</th>' +
+      '<th style="padding:8px 12px;font-size:11px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">' + escHtml(d.label1) + '</th>' +
+      '<th style="padding:8px 12px;font-size:11px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">' + escHtml(d.label2) + '</th>' +
       '<th style="padding:8px 12px;font-size:11px;color:var(--text-dim);text-align:center;border-bottom:1px solid var(--border);">变化</th>' +
     '</tr></thead>' +
     '<tbody>' + rowsHtml + '</tbody>' +
-    '</table></div>';
+    '</table></div></div>';
+}
+
+function showMonthPicker() {
+  var now = new Date();
+  var cy = now.getFullYear(), cm = now.getMonth() + 1;
+  window._pickerY = cy;
+
+  function renderPickerGrid() {
+    var pkY = window._pickerY || cy;
+    var monthsHtml = '';
+    for (var m = 1; m <= 12; m++) {
+      var isFuture = pkY > cy || (pkY === cy && m > cm);
+      var sel1 = _compY1 === pkY && _compM1 === m ? '3px solid var(--gold)' : '1px solid var(--border)';
+      var sel2 = _compY2 === pkY && _compM2 === m ? '3px solid var(--gold)' : '1px solid var(--border)';
+      var style = isFuture ? 'opacity:0.3;pointer-events:none;' : 'cursor:pointer;';
+      monthsHtml += '<div style="text-align:center;">' +
+        '<button style="width:100%;padding:10px 4px;border:' + sel1 + ';border-radius:8px 8px 0 0;background:var(--card);font-size:13px;' + style + 'color:var(--text);" onclick="pickCompareMonth(1,' + pkY + ',' + m + ')">' + m + '月</button>' +
+        '<button style="width:100%;padding:4px;border:' + sel2 + ';border-top:none;border-radius:0 0 8px 8px;background:var(--card);font-size:10px;' + style + 'color:var(--text-dim);" onclick="pickCompareMonth(2,' + pkY + ',' + m + ')">对比</button>' +
+        '</div>';
+    }
+    document.getElementById('picker-months-grid').innerHTML = monthsHtml;
+    document.getElementById('picker-year-label').textContent = pkY + '年';
+    document.getElementById('picker-prev-year').disabled = pkY <= cy - 3;
+  }
+
+  var html = '<div id="month-picker-overlay" style="position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);padding:16px;" onclick="if(event.target===this)document.getElementById(\'month-picker-overlay\').remove()">' +
+    '<div style="background:#fff;border-radius:16px;width:100%;max-width:380px;overflow:hidden;">' +
+      '<div style="padding:14px 20px;background:linear-gradient(135deg,#B8942E,#d4a843);color:#fff;font-weight:700;font-size:15px;">📊 月度对比 · 选择月份</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">' +
+        '<button id="picker-prev-year" style="border:1px solid var(--border);background:var(--card);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:13px;" onclick="window._pickerY--;renderPickerGrid()">◀ 上年</button>' +
+        '<span id="picker-year-label" style="font-size:15px;font-weight:700;color:var(--text);">' + cy + '年</span>' +
+        '<button style="border:1px solid var(--border);background:var(--card);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:13px;" onclick="window._pickerY++;renderPickerGrid()"' + (false ? ' disabled' : '') + '>下年 ▶</button>' +
+      '</div>' +
+      '<div style="padding:6px 14px;font-size:11px;color:var(--text-dim);">上排：基准月　下排：对比月　点击选择</div>' +
+      '<div id="picker-months-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px 14px 14px;"></div>' +
+      '<div style="padding:6px 14px;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--text-dim);">' +
+        '<span>已选：</span>' +
+        '<span id="picker-sel1" style="padding:3px 8px;background:var(--gold-light);border-radius:6px;font-weight:600;color:var(--gold);">' + (_compY1 ? _compY1 + '年' + _compM1 + '月' : '本月') + '</span>' +
+        '<span style="color:var(--text-dim);">vs</span>' +
+        '<span id="picker-sel2" style="padding:3px 8px;background:var(--gold-light);border-radius:6px;font-weight:600;color:var(--gold);">' + (_compY2 ? _compY2 + '年' + _compM2 + '月' : '上月') + '</span>' +
+      '</div>' +
+      '<div style="padding:8px 14px 14px;text-align:right;">' +
+        '<button style="padding:8px 20px;background:var(--gold);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;" onclick="applyMonthCompare()">✓ 开始对比</button>' +
+      '</div>' +
+    '</div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  renderPickerGrid();
+}
+
+window.renderPickerGrid = function() {
+  var pkY = window._pickerY || new Date().getFullYear();
+  var cy = new Date().getFullYear(), cm = new Date().getMonth() + 1;
+  var monthsHtml = '';
+  for (var m = 1; m <= 12; m++) {
+    var isFuture = pkY > cy || (pkY === cy && m > cm);
+    var sel1 = _compY1 === pkY && _compM1 === m ? '3px solid var(--gold)' : '1px solid var(--border)';
+    var sel2 = _compY2 === pkY && _compM2 === m ? '3px solid var(--gold)' : '1px solid var(--border)';
+    var style = isFuture ? 'opacity:0.3;pointer-events:none;' : 'cursor:pointer;';
+    monthsHtml += '<div style="text-align:center;">' +
+      '<button style="width:100%;padding:10px 4px;border:' + sel1 + ';border-radius:8px 8px 0 0;background:var(--card);font-size:13px;' + style + 'color:var(--text);" onclick="pickCompareMonth(1,' + pkY + ',' + m + ')">' + m + '月</button>' +
+      '<button style="width:100%;padding:4px;border:' + sel2 + ';border-top:none;border-radius:0 0 8px 8px;background:var(--card);font-size:10px;' + style + 'color:var(--text-dim);" onclick="pickCompareMonth(2,' + pkY + ',' + m + ')">对比</button>' +
+      '</div>';
+  }
+  var grid = document.getElementById('picker-months-grid');
+  if (grid) grid.innerHTML = monthsHtml;
+  var label = document.getElementById('picker-year-label');
+  if (label) label.textContent = pkY + '年';
+  var prevBtn = document.getElementById('picker-prev-year');
+  if (prevBtn) prevBtn.disabled = pkY <= cy - 3;
+};
+
+function pickCompareMonth(slot, y, m) {
+  if (slot === 1) { window._p1y = y; window._p1m = m; }
+  else { window._p2y = y; window._p2m = m; }
+  var sel1 = document.getElementById('picker-sel1');
+  var sel2 = document.getElementById('picker-sel2');
+  if (sel1 && window._p1y != null) sel1.textContent = window._p1y + '年' + window._p1m + '月';
+  if (sel2 && window._p2y != null) sel2.textContent = window._p2y + '年' + window._p2m + '月';
+  // Re-render grid to update borders
+  if (window.renderPickerGrid) window.renderPickerGrid();
+}
+
+function applyMonthCompare() {
+  var now = new Date();
+  var p1y = window._p1y, p1m = window._p1m;
+  var p2y = window._p2y, p2m = window._p2m;
+  if (p1y == null) { p1y = _compY1 || now.getFullYear(); p1m = _compM1 || now.getMonth() + 1; }
+  if (p2y == null) { p2y = _compY2 || (p1m === 1 ? p1y - 1 : p1y); p2m = _compM2 || (p1m === 1 ? 12 : p1m - 1); }
+  _compY1 = p1y; _compM1 = p1m;
+  _compY2 = p2y; _compM2 = p2m;
+  window._p1y = null; window._p1m = null; window._p2y = null; window._p2m = null;
+  var overlay = document.getElementById('month-picker-overlay');
+  if (overlay) overlay.remove();
+  renderAnalysis();
 }
 
 // === My Page ===
 function renderMy() {
   var user = DB.currentUser;
   var total = getMyCustomers().length;
-  var baseUrl = location.origin + location.pathname;
-  var selfUrl = baseUrl + '?u=' + encodeURIComponent(user.name);
-
   var html = '<div class="profile-card">' +
       '<div class="profile-avatar">👤</div>' +
       '<div class="profile-name">' + escRaw(user.name) + '</div>' +
@@ -2151,7 +2275,6 @@ function renderMy() {
     html += '<div class="profile-card">' +
       '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:8px;">⚙️ 系统设置</div>' +
       '<div class="setting-row"><span>🏊 自动公海池阈值（天）</span><span style="display:flex;align-items:center;gap:6px;"><input type="number" id="set-pool-days" class="setting-input" min="0" value="' + (DB.settings ? DB.settings.autoPoolDays : 30) + '"><button class="qf-btn" id="save-settings">保存</button></span></div>' +
-      '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">超过阈值天未跟进的客户将自动移入公共池。设为 0 关闭自动回收。</div>' +
     '</div>';
 
     // Pending approvals
@@ -2177,28 +2300,7 @@ function renderMy() {
       '<span class="action-icon">👔</span><span class="action-text" style="color:var(--gold);">顾问账号管理</span><span class="action-arrow" style="color:var(--gold);">›</span></div>';
 
     // Manager push notification
-    var consNames = [];
-    Object.keys(DEMO_ACCOUNTS).forEach(function(n) { if (DEMO_ACCOUNTS[n].role === '置业顾问') consNames.push(n); });
-    html += '<div class="profile-card" style="text-align:left;">' +
-      '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:10px;">📨 消息推送</div>' +
-      '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">选择顾问发送通知消息</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="push-cons-list">' +
-        '<label style="font-size:12px;cursor:pointer;padding:4px 8px;background:var(--card2);border-radius:6px;display:flex;align-items:center;gap:4px;">' +
-          '<input type="checkbox" id="push-select-all" style="accent-color:var(--gold);"> 全选</label>' +
-        consNames.map(function(n) {
-          return '<label style="font-size:12px;cursor:pointer;padding:4px 8px;background:var(--card2);border-radius:6px;display:flex;align-items:center;gap:4px;">' +
-            '<input type="checkbox" class="push-cons-cb" value="' + escHtml(n) + '" style="accent-color:var(--gold);"> ' + escHtml(n) + '</label>';
-        }).join('') +
-      '</div>' +
-      '<textarea id="push-msg-text" class="login-input" placeholder="输入推送消息内容..." style="width:100%;height:60px;resize:vertical;font-size:13px;padding:8px;box-sizing:border-box;margin-bottom:8px;"></textarea>' +
-      '<button class="qf-btn" id="send-push-btn" style="width:100%;">📤 发送通知</button>' +
-      '<div id="push-msg-status" style="font-size:11px;margin-top:6px;display:none;"></div>' +
-      // Sent messages history
-      '<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">' +
-        '<div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">📋 已发送消息</div>' +
-        '<div id="sent-msgs-list" style="max-height:150px;overflow-y:auto;"></div>' +
-      '</div>' +
-    '</div>';
+    html += '<div class="action-item" id="act-msg-push"><span class="action-icon">📨</span><span class="action-text">消息推送</span><span class="action-arrow">›</span></div>';
   }
 
   // Consultant inbox
@@ -2213,18 +2315,18 @@ function renderMy() {
       html += '<div style="max-height:200px;overflow-y:auto;">';
       myMsgs.forEach(function(m) {
         var isUnread = m.readBy.indexOf(user.name) === -1;
-        html += '<div class="msg-item" data-msg-id="' + m.id + '" style="padding:8px 10px;margin-bottom:6px;background:' + (isUnread ? 'var(--gold-light)' : 'var(--card2)') + ';border-radius:8px;border-left:3px solid ' + (isUnread ? 'var(--gold)' : 'transparent') + ';cursor:pointer;">' +
+        html += '<div class="msg-item-inline" data-msg-id="' + m.id + '" style="padding:8px 10px;margin-bottom:6px;background:' + (isUnread ? 'var(--gold-light)' : 'var(--card2)') + ';border-radius:8px;border-left:3px solid ' + (isUnread ? 'var(--gold)' : 'transparent') + ';cursor:pointer;">' +
           '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:3px;">' +
             '<span>来自：' + escHtml(m.from) + '</span>' +
             '<span>' + (m.time ? m.time.slice(0, 16).replace('T', ' ') : '') + '</span>' +
           '</div>' +
           '<div style="font-size:13px;">' + escHtml(m.content) + '</div>' +
-          (isUnread ? '<div style="text-align:right;margin-top:2px;"><button class="qf-btn mark-read-btn" data-msg-id="' + m.id + '" style="font-size:10px;padding:2px 8px;">标记已读</button></div>' : '') +
+          (isUnread ? '<div style="text-align:right;margin-top:2px;"><button class="qf-btn mark-read-inline-btn" data-msg-id="' + m.id + '" style="font-size:10px;padding:2px 8px;">标记已读</button></div>' : '') +
         '</div>';
       });
       html += '</div>';
       if (unreadCount > 0) {
-        html += '<button class="qf-btn" id="mark-all-read-btn" style="width:100%;margin-top:6px;font-size:12px;">✓ 全部已读</button>';
+        html += '<button class="qf-btn" id="mark-all-read-inline" style="width:100%;margin-top:6px;font-size:12px;">✓ 全部已读</button>';
       }
     }
     html += '</div>';
@@ -2310,60 +2412,28 @@ function renderMy() {
       toast('已保存：' + (v > 0 ? v + '天未跟进自动入公海池' : '已关闭自动回收'), 'success');
     };
   }
-  // === Message push handlers (manager) ===
-  var sendPushBtn = document.getElementById('send-push-btn');
-  if (sendPushBtn) {
-    // Select all toggle
-    var selectAllCb = document.getElementById('push-select-all');
-    if (selectAllCb) {
-      selectAllCb.onchange = function() {
-        document.querySelectorAll('.push-cons-cb').forEach(function(cb) { cb.checked = selectAllCb.checked; });
-      };
-    }
-    sendPushBtn.onclick = function() {
-      var checked = document.querySelectorAll('.push-cons-cb:checked');
-      var toList = [];
-      checked.forEach(function(cb) { toList.push(cb.value); });
-      var textEl = document.getElementById('push-msg-text');
-      var content = (textEl.value || '').trim();
-      var statusEl = document.getElementById('push-msg-status');
-      if (toList.length === 0) {
-        if (statusEl) { statusEl.textContent = '请至少选择一位顾问'; statusEl.style.color = '#e74c3c'; statusEl.style.display = 'block'; }
-        return;
-      }
-      if (!content) {
-        if (statusEl) { statusEl.textContent = '请输入消息内容'; statusEl.style.color = '#e74c3c'; statusEl.style.display = 'block'; }
-        return;
-      }
-      sendPushMsg(toList, content);
-      textEl.value = '';
-      if (statusEl) { statusEl.textContent = '已发送给 ' + toList.length + ' 位顾问'; statusEl.style.color = '#2ecc71'; statusEl.style.display = 'block'; }
-      // Refresh sent messages list
-      renderSentMsgs();
-      setTimeout(function() { if (statusEl) statusEl.style.display = 'none'; }, 3000);
-    };
-    renderSentMsgs();
-  }
+  // Message push action item → overlay
+  var actMsgPush = document.getElementById('act-msg-push');
+  if (actMsgPush) actMsgPush.onclick = openMsgPushOverlay;
 
-  // === Message inbox handlers (consultant) ===
-  document.querySelectorAll('.msg-item').forEach(function(item) {
+  // === Inline inbox handlers (consultant) ===
+  document.querySelectorAll('.msg-item-inline').forEach(function(item) {
     item.onclick = function(e) {
-      if (e.target.classList.contains('mark-read-btn')) return;
-      var msgId = item.dataset.msgId;
-      markMsgRead(msgId);
+      if (e.target.classList.contains('mark-read-inline-btn')) return;
+      markMsgRead(item.dataset.msgId);
       renderMy();
     };
   });
-  document.querySelectorAll('.mark-read-btn').forEach(function(btn) {
+  document.querySelectorAll('.mark-read-inline-btn').forEach(function(btn) {
     btn.onclick = function(e) {
       e.stopPropagation();
       markMsgRead(btn.dataset.msgId);
       renderMy();
     };
   });
-  var markAllBtn = document.getElementById('mark-all-read-btn');
-  if (markAllBtn) {
-    markAllBtn.onclick = function() { markAllMsgRead(); renderMy(); };
+  var markAllInlineBtn = document.getElementById('mark-all-read-inline');
+  if (markAllInlineBtn) {
+    markAllInlineBtn.onclick = function() { markAllMsgRead(); renderMy(); };
   }
 
   // Notification toggle
@@ -2597,7 +2667,7 @@ function openDetail(id) {
     ? '<div class="info-item" style="grid-column:1/-1;"><div class="info-label">跟进状态</div><div class="info-value"><span class="tag ' + status.cls + '">' + status.text + '</span> · ' + escRaw(c.followUpNote || '无跟进说明') + '</div></div>' : '';
 
   var priceHtml = c.calculatedPrice
-    ? '<div class="info-item" style="background:rgba(184,148,46,0.08);border-left:3px solid var(--gold);"><div class="info-label" style="color:var(--gold);font-size:11px;">💰 算价结果</div><div class="info-value" style="font-size:13px;">' +
+    ? '<div class="info-item" style="background:rgba(184,148,46,0.08);border-left:3px solid var(--gold);"><div class="info-label" style="color:var(--gold);font-size:11px;">' + renderLabel('价') + ' 算价结果</div><div class="info-value" style="font-size:13px;">' +
         '<div style="margin-bottom:4px;"><b>房源：</b>' + escHtml((c.calculatedPrice.building || '') + ' ' + fmtUnit(c.calculatedPrice.unit || '')) + '　<b>面积：</b>' + escHtml(c.calculatedPrice.area || '') + '㎡</div>' +
         '<div><b>总价：</b><span style="font-size:16px;color:var(--gold);font-weight:700;">' + escHtml(c.calculatedPrice.price || '') + ' 元</span>　<b>单价：</b><span style="font-size:14px;color:var(--gold);font-weight:700;">' + (c.calculatedPrice.unitPrice != null ? escHtml(c.calculatedPrice.unitPrice.toFixed(2)) + ' 元/㎡' : '—') + '</span></div>' +
         '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">算价日期：' + escHtml(c.calculatedPrice.date || '') + '</div>' +
@@ -2646,7 +2716,7 @@ function openDetail(id) {
   document.getElementById('detail-edit').style.display = (isManager || isOwner) ? '' : 'none';
   document.getElementById('detail-del').style.display = (isManager || isOwner) ? '' : 'none';
   document.getElementById('detail-price').style.display = (isManager || isOwner) ? '' : 'none';
-  document.getElementById('detail-price').textContent = c.calculatedPrice ? '💰 查看算价' : '💰 算价格';
+  document.getElementById('detail-price').innerHTML = c.calculatedPrice ? renderLabel('价') + ' 查看算价' : renderLabel('价') + ' 算价格';
 
   var poolBtn = document.getElementById('detail-pool');
   if (c.inPool) {
@@ -3176,6 +3246,11 @@ function doSaveCustomer(customerData) {
   }
 
   if (editingCustomer) {
+    // Preserve calculated price data when editing
+    if (!customerData.calculatedPrice && editingCustomer.calculatedPrice) {
+      customerData.calculatedPrice = editingCustomer.calculatedPrice;
+      customerData.calculated = editingCustomer.calculated;
+    }
     var idx = DB.customers.findIndex(function(x) { return x.id === editingCustomer.id; });
     if (idx !== -1) DB.customers[idx] = customerData;
   } else {
@@ -3345,6 +3420,32 @@ function showConsultantCustomers(name) {
   renderStatListOverlay(customers, name + ' · 客户');
 }
 
+function showConsultantCustomersByDim(name, dim) {
+  var todayStr = today();
+  var customers = DB.customers.filter(function(c) { return c.consultant === name && !c.inPool; });
+  var filtered;
+  var dimLabel;
+  if (dim === 'all') {
+    filtered = customers;
+    dimLabel = '全部';
+  } else if (dim === 'deal') {
+    filtered = customers.filter(function(c) { return c.dealStatus === '签约' || c.dealStatus === '认购'; });
+    dimLabel = '成交';
+  } else if (dim === 'overdue') {
+    filtered = customers.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) < 0; });
+    dimLabel = '逾期';
+  } else if (dim.indexOf('level-') === 0) {
+    var lv = dim.replace('level-', '');
+    filtered = customers.filter(function(c) { return c.level === lv; });
+    dimLabel = lv + '级';
+  } else {
+    filtered = customers;
+    dimLabel = dim;
+  }
+  if (filtered.length === 0) { toast(name + ' · ' + dimLabel + '：无客户', 'info'); return; }
+  renderStatListOverlay(filtered, name + ' · ' + dimLabel);
+}
+
 function showStatListByFilter(val, type) {
   var todayStr = today();
   var myCs = getMyCustomers();
@@ -3364,9 +3465,9 @@ function showStatList(shown, label) {
   }
   var filtered = [];
   if (label === '所有') filtered = myCs;
-  else if (label === '逾期') filtered = myCs.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) > 0; });
+  else if (label === '逾期') filtered = myCs.filter(function(c) { return c.followUpDate && daysBetween(c.followUpDate, todayStr) < 0; });
   else if (label === '待跟进') filtered = myCs.filter(function(c) { if (!c.followUpDate) return false; var d = daysBetween(c.followUpDate, todayStr); return d >= 0 && d <= 3; });
-  else if (label === '正常') filtered = myCs.filter(function(c) { return !c.followUpDate || daysBetween(c.followUpDate, todayStr) <= 0; });
+  else if (label === '正常') filtered = myCs.filter(function(c) { return !c.followUpDate || daysBetween(c.followUpDate, todayStr) >= 0; });
   else if (label === 'A级') filtered = myCs.filter(function(c) { return c.level === 'A'; });
   else if (label === 'B级') filtered = myCs.filter(function(c) { return c.level === 'B'; });
   else if (label === 'C+级') filtered = myCs.filter(function(c) { return c.level === 'C+'; });
@@ -3384,73 +3485,7 @@ function showStatList(shown, label) {
 }
 
 function renderStatListOverlay(filtered, label) {
-
-  var stageTag = function(s) {
-    var m = { '问询': '问', '来访': '访', '认筹': '筹', '认购': '购', '签约': '签' };
-    return '<span style="background:rgba(184,148,46,0.15);color:var(--gold);padding:2px 7px;border-radius:6px;font-size:12px;font-weight:600;">' + (m[s] || s) + '</span>';
-  };
-
-  var cardsHtml = '';
-  filtered.forEach(function(c) {
-    var phoneMask = maskPhone(c.phone || '');
-    var isManager = DB.currentUser && DB.currentUser.role === '销售经理';
-    var lvlColor = { 'A': '#e74c3c', 'B': '#e67e22', 'C+': 'var(--gold)', 'C': '#888', 'C-': '#555', 'D': '#1a1a1a' }[c.level] || '#888';
-
-    // Consultant in header (for manager)
-    var consultantHeader = isManager
-      ? '<span style="font-size:12px;color:var(--gold);font-weight:500;flex-shrink:0;">' + escRaw(c.consultant) + '</span>' : '';
-
-    // Info row: channel, demand area, competitor
-    var infoParts = [];
-    if (c.channel) infoParts.push('<span>📌 ' + escRaw(c.channel) + '</span>');
-    if (c.area) infoParts.push('<span><span style="background:rgba(91,122,154,0.12);color:var(--blue);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">需</span> ' + escRaw(c.area) + '㎡</span>');
-    if (c.competitor) infoParts.push('<span><span style="background:rgba(91,140,90,0.12);color:var(--green);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">比</span> ' + escRaw(c.competitor) + '</span>');
-    var infoRow = infoParts.length > 0 ? '<div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:6px;">' + infoParts.join('') + '</div>' : '';
-
-    // Price: 房源 · 面积 · 总价 · 单价
-    var priceInfo = '';
-    if (c.calculatedPrice && c.calculatedPrice.price) {
-      var pp = c.calculatedPrice;
-      var pParts = [];
-      if (pp.building || pp.unit) pParts.push((pp.building || '') + ' ' + fmtUnit(pp.unit || ''));
-      if (pp.area) pParts.push(pp.area + '㎡');
-      pParts.push(pp.price + '元');
-      if (pp.unitPrice != null) pParts.push(pp.unitPrice.toFixed(2) + '元/㎡');
-      priceInfo = '<span style="font-size:12px;color:var(--gold);font-weight:600;">💰 ' + pParts.join(' · ') + '</span>';
-    }
-
-    // Deal tag — only show when different from sales stage to avoid duplication
-    var dealTag = c.dealStatus && c.dealStatus !== '未成交' && c.dealStatus !== (c.salesStage || '问询')
-      ? '<span style="background:rgba(46,204,113,0.15);color:var(--green);padding:2px 7px;border-radius:6px;font-size:12px;font-weight:600;">' + c.dealStatus + '</span>' : '';
-
-    // Followup date
-    var followupMeta = '';
-    if (c.followUpDate) {
-      var fd = daysBetween(c.followUpDate, today());
-      followupMeta = '<span style="font-size:11px;color:' + (fd > 0 ? 'var(--red)' : fd === 0 ? 'var(--yellow)' : 'var(--text-dim)') + ';">跟进：' + escRaw(c.followUpDate) + '</span>';
-    }
-
-    var revisitHtml = c.revisitCount ? '<span class="revisit-badge">复访🔥 ' + c.revisitCount + '次</span>' : '';
-
-    cardsHtml += '<div class="customer-card" data-id="' + c.id + '" style="background:#fff;border-left:3px solid ' + lvlColor + ';">' +
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
-        '<span class="level-badge ' + c.level + '">' + c.level + '</span>' +
-        '<span style="font-size:15px;font-weight:600;color:#1a1a1a;flex:1;">' + escRaw(c.name) + '</span>' +
-        consultantHeader +
-        revisitHtml +
-        '<span style="font-size:12px;color:var(--text-dim);">' + escHtml(phoneMask) + '</span>' +
-      '</div>' +
-      infoRow +
-      '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">' +
-        stageTag(c.salesStage || '问询') + dealTag + priceInfo +
-      '</div>' +
-      '<div style="margin-top:4px;font-size:11px;color:var(--text-dim);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
-        (c.residence ? '<span><span style="background:rgba(184,148,46,0.12);color:var(--gold);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;">居</span> ' + escRaw(c.residence) + '</span>' : '') +
-        followupMeta +
-        '<button class="card-qf-btn" data-qf-id="' + c.id + '">📝 跟进</button>' +
-      '</div>' +
-    '</div>';
-  });
+  var cardsHtml = filtered.map(function(c) { return renderCustomerCard(c); }).join('');
 
   var html = '<div id="stat-list-overlay" style="position:fixed;inset:0;z-index:200;background:#f5f5f5;display:flex;flex-direction:column;">' +
     '<div style="padding:16px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
@@ -3934,10 +3969,84 @@ function markMsgRead(msgId) {
   }
 }
 
-function renderSentMsgs() {
-  var el = document.getElementById('sent-msgs-list');
-  if (!el) return;
-  if (!DB.currentUser || DB.currentUser.role !== '销售经理') return;
+function markAllMsgRead() {
+  if (!DB.currentUser || !DB.messages) return;
+  var name = DB.currentUser.name;
+  DB.messages.forEach(function(m) {
+    if (m.to.indexOf(name) !== -1 && m.readBy.indexOf(name) === -1) {
+      m.readBy.push(name);
+    }
+  });
+  saveDB();
+  updateMsgBadge();
+}
+
+function openMsgPushOverlay() {
+  var consNames = [];
+  Object.keys(DEMO_ACCOUNTS).forEach(function(n) { if (DEMO_ACCOUNTS[n].role === '置业顾问') consNames.push(n); });
+
+  var html = '<div class="msg-overlay" onclick="if(event.target===this)document.getElementById(\'msg-push-overlay\').innerHTML=\'\'">' +
+    '<div class="msg-panel">' +
+      '<div class="msg-panel-header">' +
+        '<span>📨 消息推送</span>' +
+        '<span style="cursor:pointer;font-size:22px;" onclick="document.getElementById(\'msg-push-overlay\').innerHTML=\'\'">×</span>' +
+      '</div>' +
+      '<div class="msg-panel-body">' +
+        '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">选择顾问发送通知消息</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">' +
+          '<label style="font-size:12px;cursor:pointer;padding:4px 8px;background:var(--card2);border-radius:6px;display:flex;align-items:center;gap:4px;">' +
+            '<input type="checkbox" id="push-select-all-overlay" style="accent-color:var(--gold);"> 全选</label>' +
+          consNames.map(function(n) {
+            return '<label style="font-size:12px;cursor:pointer;padding:4px 8px;background:var(--card2);border-radius:6px;display:flex;align-items:center;gap:4px;">' +
+              '<input type="checkbox" class="push-cons-cb-overlay" value="' + escHtml(n) + '" style="accent-color:var(--gold);"> ' + escHtml(n) + '</label>';
+          }).join('') +
+        '</div>' +
+        '<textarea id="push-msg-text-overlay" class="login-input" placeholder="输入推送消息内容..." style="width:100%;height:60px;resize:vertical;font-size:13px;padding:8px;box-sizing:border-box;margin-bottom:8px;"></textarea>' +
+        '<button class="qf-btn" id="send-push-btn-overlay" style="width:100%;">📤 发送通知</button>' +
+        '<div id="push-msg-status-overlay" style="font-size:11px;margin-top:6px;display:none;"></div>' +
+        '<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">' +
+          '<div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">📋 已发送消息</div>' +
+          '<div id="sent-msgs-list-overlay" style="max-height:150px;overflow-y:auto;"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  document.getElementById('msg-push-overlay').innerHTML = html;
+
+  // Wire select all
+  document.getElementById('push-select-all-overlay').onchange = function() {
+    document.querySelectorAll('.push-cons-cb-overlay').forEach(function(cb) { cb.checked = this.checked; }.bind(this));
+  };
+
+  // Wire send
+  document.getElementById('send-push-btn-overlay').onclick = function() {
+    var checked = document.querySelectorAll('.push-cons-cb-overlay:checked');
+    var toList = [];
+    checked.forEach(function(cb) { toList.push(cb.value); });
+    var content = (document.getElementById('push-msg-text-overlay').value || '').trim();
+    var statusEl = document.getElementById('push-msg-status-overlay');
+    if (toList.length === 0) {
+      if (statusEl) { statusEl.textContent = '请至少选择一位顾问'; statusEl.style.color = '#e74c3c'; statusEl.style.display = 'block'; }
+      return;
+    }
+    if (!content) {
+      if (statusEl) { statusEl.textContent = '请输入消息内容'; statusEl.style.color = '#e74c3c'; statusEl.style.display = 'block'; }
+      return;
+    }
+    sendPushMsg(toList, content);
+    document.getElementById('push-msg-text-overlay').value = '';
+    if (statusEl) { statusEl.textContent = '已发送给 ' + toList.length + ' 位顾问'; statusEl.style.color = '#2ecc71'; statusEl.style.display = 'block'; }
+    renderSentMsgsOverlay();
+    setTimeout(function() { if (statusEl) statusEl.style.display = 'none'; }, 3000);
+  };
+
+  renderSentMsgsOverlay();
+}
+
+function renderSentMsgsOverlay() {
+  var el = document.getElementById('sent-msgs-list-overlay');
+  if (!el || !DB.currentUser || DB.currentUser.role !== '销售经理') return;
   var sent = (DB.messages || []).filter(function(m) { return m.from === DB.currentUser.name; }).slice().reverse().slice(0, 10);
   if (sent.length === 0) {
     el.innerHTML = '<div style="font-size:11px;color:var(--text-dim);text-align:center;padding:8px 0;">暂无已发送消息</div>';
@@ -3957,16 +4066,70 @@ function renderSentMsgs() {
   }).join('');
 }
 
-function markAllMsgRead() {
-  if (!DB.currentUser || !DB.messages) return;
-  var name = DB.currentUser.name;
-  DB.messages.forEach(function(m) {
-    if (m.to.indexOf(name) !== -1 && m.readBy.indexOf(name) === -1) {
-      m.readBy.push(name);
-    }
+function openMsgInboxOverlay() {
+  var user = DB.currentUser;
+  if (!user || user.role !== '置业顾问') return;
+  var myMsgs = (DB.messages || []).filter(function(m) { return m.to.indexOf(user.name) !== -1; }).slice().reverse();
+  var unreadCount = myMsgs.filter(function(m) { return m.readBy.indexOf(user.name) === -1; }).length;
+
+  var messagesHtml = '';
+  if (myMsgs.length === 0) {
+    messagesHtml = '<div style="font-size:12px;color:var(--text-dim);text-align:center;padding:20px 0;">暂无消息</div>';
+  } else {
+    messagesHtml = myMsgs.map(function(m) {
+      var isUnread = m.readBy.indexOf(user.name) === -1;
+      return '<div class="msg-item-overlay" data-msg-id="' + m.id + '" style="padding:10px;margin-bottom:8px;background:' + (isUnread ? 'var(--gold-light)' : 'var(--card2)') + ';border-radius:8px;border-left:3px solid ' + (isUnread ? 'var(--gold)' : 'transparent') + ';cursor:pointer;">' +
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:4px;">' +
+          '<span>来自：' + escHtml(m.from) + '</span>' +
+          '<span>' + (m.time ? m.time.slice(0, 16).replace('T', ' ') : '') + '</span>' +
+        '</div>' +
+        '<div style="font-size:13px;color:var(--text);">' + escHtml(m.content) + '</div>' +
+        (isUnread ? '<div style="text-align:right;margin-top:4px;"><button class="qf-btn mark-read-btn-overlay" data-msg-id="' + m.id + '" style="font-size:10px;padding:2px 8px;">标记已读</button></div>' : '') +
+      '</div>';
+    }).join('');
+  }
+
+  var html = '<div class="msg-overlay" onclick="if(event.target===this)document.getElementById(\'msg-inbox-overlay\').innerHTML=\'\'">' +
+    '<div class="msg-panel">' +
+      '<div class="msg-panel-header">' +
+        '<span>📬 收件箱' + (unreadCount > 0 ? ' <span style="background:#e74c3c;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-block;text-align:center;line-height:20px;font-size:11px;vertical-align:middle;">' + unreadCount + '</span>' : '') + '</span>' +
+        '<span style="cursor:pointer;font-size:22px;" onclick="document.getElementById(\'msg-inbox-overlay\').innerHTML=\'\'">×</span>' +
+      '</div>' +
+      '<div class="msg-panel-body">' +
+        (unreadCount > 0 ? '<button class="qf-btn" id="mark-all-read-overlay" style="width:100%;margin-bottom:10px;font-size:12px;">✓ 全部已读</button>' : '') +
+        '<div style="max-height:50vh;overflow-y:auto;">' + messagesHtml + '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  document.getElementById('msg-inbox-overlay').innerHTML = html;
+
+  // Wire mark-all-read
+  var markAllBtn = document.getElementById('mark-all-read-overlay');
+  if (markAllBtn) {
+    markAllBtn.onclick = function() {
+      markAllMsgRead();
+      openMsgInboxOverlay();
+    };
+  }
+
+  // Wire message click → mark read
+  document.querySelectorAll('.msg-item-overlay').forEach(function(item) {
+    item.onclick = function(e) {
+      if (e.target.classList.contains('mark-read-btn-overlay')) return;
+      markMsgRead(item.dataset.msgId);
+      openMsgInboxOverlay();
+    };
   });
-  saveDB();
-  updateMsgBadge();
+
+  // Wire individual mark-read buttons
+  document.querySelectorAll('.mark-read-btn-overlay').forEach(function(btn) {
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      markMsgRead(btn.dataset.msgId);
+      openMsgInboxOverlay();
+    };
+  });
 }
 
 function startSessionCheck() {
@@ -4141,7 +4304,7 @@ function initApp() {
   };
   document.getElementById('logout-btn').onclick = doLogout;
   var msgBell = document.getElementById('msg-bell-btn');
-  if (msgBell) msgBell.onclick = function() { navigateTo('my'); };
+  if (msgBell) msgBell.onclick = function() { openMsgInboxOverlay(); };
   document.getElementById('detail-back').onclick = closeDetail;
   document.getElementById('form-back').onclick = closeForm;
   document.getElementById('search-input').addEventListener('input', renderCustomerList);
