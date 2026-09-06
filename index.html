@@ -620,7 +620,7 @@ var SALES_STAGES = [
   { key: '签约', label: '签约', color: '#2ecc71', icon: '🏆' }
 ];
 var FOLLOWUP_METHODS = ['来电','来访','去电','微信','短信'];
-var DEFAULT_SETTINGS = { autoPoolDays: 30, followupReminder: 7 };
+var DEFAULT_SETTINGS = { autoPoolDays: 0, followupReminder: 7 };
 var CHANNELS = ['自访','自渠','中介','全民','老带新','新媒体'];
 var CHAN_MAP = {
   '自来':'自访','自己':'自访','路过':'自访','避雨':'自访','打卡':'自访',
@@ -755,7 +755,26 @@ function loadDB() {
         if (!c.followUps) c.followUps = [];
         if (!c.history) c.history = [];
       });
+      // v3.5 迁移：恢复此前被「自动回收」误移入公共池的客户（手动移入的不动）
+      var restoredAny = false;
+      DB.customers.forEach(function(c) {
+        if (c.inPool && c.poolReason && c.poolReason.indexOf('未跟进') !== -1) {
+          c.inPool = false;
+          delete c.poolReason;
+          delete c.poolTime;
+          if (!c.history) c.history = [];
+          c.history.unshift({
+            time: new Date().toISOString(),
+            action: '恢复至我的客户',
+            detail: '关闭自动回收后，恢复此前被自动移入公共池的客户',
+            operator: '系统'
+          });
+          restoredAny = true;
+        }
+      });
+      if (restoredAny) saveDB();
       if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
+      DB.settings.autoPoolDays = 0;
       if (!DB.soldUnits) DB.soldUnits = {};
       if (!DB.sessions) DB.sessions = {};
       // Restore accounts & admin code
@@ -813,9 +832,24 @@ function pullRemoteState(callback) {
     .catch(function(err) { console.warn('[Sync] Pull error:', err.message); if (callback) callback(); });
 }
 
+function mergeCustomers(localList, remoteList) {
+  var byId = {};
+  (localList || []).forEach(function(c) { if (c && c.id) byId[c.id] = c; });
+  (remoteList || []).forEach(function(rc) {
+    if (!rc || !rc.id) return;
+    var lc = byId[rc.id];
+    if (!lc) { byId[rc.id] = rc; return; }
+    var lt = lc.updatedAt || lc.createdAt || '';
+    var rt = rc.updatedAt || rc.createdAt || '';
+    if (rt > lt) byId[rc.id] = rc;
+  });
+  return Object.keys(byId).map(function(k) { return byId[k]; });
+}
+
 function mergeRemoteData(remoteData) {
   var localUser = DB.currentUser;
   var localToken = localUser ? localUser.sessionToken : null;
+  var mergedCustomers = mergeCustomers(DB.customers, remoteData.customers);
   DB = remoteData;
   if (!DB.customers) DB.customers = [];
   if (!DB.approvedUsers) DB.approvedUsers = [];
@@ -826,6 +860,7 @@ function mergeRemoteData(remoteData) {
   if (!DB.messages) DB.messages = [];
   if (!DB.sessions) DB.sessions = {};
   if (DB.version == null) DB.version = 3.3;
+  DB.customers = mergedCustomers;
   DB.currentUser = localUser;
   if (localUser && localToken) DB.currentUser.sessionToken = localToken;
   // Restore accounts & admin code from remote
@@ -973,29 +1008,13 @@ function addFollowUp(c, method, content, nextDate) {
   c.followUps.unshift(f);
   c.followUpNote = content;
   if (nextDate) c.followUpDate = nextDate;
+  c.updatedAt = new Date().toISOString();
   addHistory(c, '添加跟进', method + ' · ' + (content || '').slice(0, 20));
 }
 function autoPoolCheck() {
-  if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
-  var days = DB.settings.autoPoolDays;
-  if (!days || days <= 0) return;
-  var todayStr = today();
-  var moved = [];
-  DB.customers.forEach(function(c) {
-    if (c.inPool) return;
-    if (!c.followUpDate) return;
-    var lastDate = c.followUps && c.followUps[0] ? c.followUps[0].time.slice(0,10) : c.followUpDate;
-    var d = daysBetween(todayStr, lastDate);
-    if (d > days) {
-      c.inPool = true;
-      c.poolTime = new Date().toISOString();
-      c.poolReason = '超' + d + '天未跟进（阈值' + days + '天）';
-      addHistory(c, '自动移入公共池', c.poolReason);
-      moved.push(c.name);
-    }
-  });
-  if (moved.length > 0) saveDB();
-  return moved;
+  // v3.5: 自动回收已彻底关闭。此前会因逾期N天未跟进自动把客户移入公共池，
+  // 导致客户从「我的客户」列表消失，被误认为数据丢失。
+  return [];
 }
 
 // ============================================================
@@ -2276,11 +2295,6 @@ function renderMy() {
 
   // Manager settings
   if (user.role === '销售经理') {
-    html += '<div class="profile-card">' +
-      '<div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:8px;">⚙️ 系统设置</div>' +
-      '<div class="setting-row"><span>🏊 自动公海池阈值（天）</span><span style="display:flex;align-items:center;gap:6px;"><input type="number" id="set-pool-days" class="setting-input" min="0" value="' + (DB.settings ? DB.settings.autoPoolDays : 30) + '"><button class="qf-btn" id="save-settings">保存</button></span></div>' +
-    '</div>';
-
     // Pending approvals
     var pending = DB.pendingUsers || [];
     html += '<div class="profile-card">' +
@@ -2405,17 +2419,6 @@ function renderMy() {
     if (rejBtn) rejBtn.onclick = function() { rejectUser(i); renderMy(); };
   });
 
-  // Save settings
-  var saveBtn = document.getElementById('save-settings');
-  if (saveBtn) {
-    saveBtn.onclick = function() {
-      var v = parseInt((document.getElementById('set-pool-days').value || '0'));
-      if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
-      DB.settings.autoPoolDays = v;
-      saveDB();
-      toast('已保存：' + (v > 0 ? v + '天未跟进自动入公海池' : '已关闭自动回收'), 'success');
-    };
-  }
   // Message push action item → overlay
   var actMsgPush = document.getElementById('act-msg-push');
   if (actMsgPush) actMsgPush.onclick = openMsgPushOverlay;
@@ -3244,6 +3247,7 @@ function submitForm() {
 }
 
 function doSaveCustomer(customerData) {
+  customerData.updatedAt = new Date().toISOString();
 
   // Auto-sync dealStatus with salesStage
   if (customerData.salesStage === '签约') {
