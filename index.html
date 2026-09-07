@@ -642,6 +642,79 @@ var DEMO_ACCOUNTS = {
   '程华军':    { role: '销售经理', pwd: 'chj2026' }
 };
 
+function makeDemo() {
+  var now = Date.now();
+  return [
+    {
+      id: uuid(), name: '徐女士', phone: '13812345601',
+      consultant: '崔妮', channel: '自访', level: 'C',
+      salesStage: '问询', secondaryPhone: '', birthday: '',
+      followUps: [
+        { time: new Date(now - 86400000*2).toISOString(), method: '来电', content: '客户回访，告知本周特惠邀约周末到访', nextFollowUp: fDate(new Date(now + 86400000*3)), operator: '崔妮' }
+      ],
+      history: [],
+      calculated: false, fullProcess: false,
+      job: '职工', age: '40左右', area: '130', budget: '',
+      residence: '凯茵新城', competitor: '等润宸',
+      visitDuration: '40',
+      visitTime: new Date(now - 86400000*3).toISOString().slice(0,16),
+      revisitCount: 1,
+      soace: '朋友陪同来看，朋友以前做中介的，说要等润宸二期。客户对面积要求130左右，首付预算有限，觉得超预算。客户自访，进门避雨，看房意愿一般。',
+      note: '客户意向较弱，需持续跟进',
+      followUpDate: fDate(new Date(now - 86400000*2)),
+      followUpNote: '告知本周特惠，邀约周末再来看',
+      resistanceTags: ['预算不足'], solutions: ['制造紧迫感','推荐替代户型'],
+      createdAt: new Date(now - 86400000*3).toISOString()
+    },
+    {
+      id: uuid(), name: '陈先生', phone: '13812345602',
+      consultant: '崔妮', channel: '中介', level: 'B',
+      salesStage: '来访', secondaryPhone: '13912345002', birthday: '',
+      followUps: [
+        { time: new Date(now - 86400000*3).toISOString(), method: '来访', content: '中介带访，参观样板间，意向143㎡', nextFollowUp: fDate(new Date(now + 86400000*4)), operator: '崔妮' },
+        { time: new Date(now - 86400000*1).toISOString(), method: '微信', content: '发送算价单和户型资料，客户回复先看看', nextFollowUp: fDate(new Date(now + 86400000*5)), operator: '崔妮' }
+      ],
+      history: [],
+      calculated: false, fullProcess: false,
+      job: '私企业主', age: '35左右', area: '150', budget: '300万',
+      residence: '远洋城', competitor: '看过润珑',
+      visitDuration: '60',
+      visitTime: new Date(now - 86400000*1).toISOString().slice(0,16),
+      revisitCount: 2,
+      soace: '中介带访，之前看过润珑，对比后对项目配套较满意。资金基本到位，但对价格敏感，希望有折扣。老婆陪同来，决策需两人同意。',
+      note: '复访客户，中介维护好',
+      followUpDate: fDate(new Date(now + 86400000*5)),
+      followUpNote: '等中介反馈，约下次带老婆一起来',
+      resistanceTags: ['预算不足'], solutions: ['引导分期付款'],
+      createdAt: new Date(now - 86400000*5).toISOString()
+    },
+    {
+      id: uuid(), name: '李小姐', phone: '13812345603',
+      consultant: '赵明', channel: '老带新', level: 'A',
+      salesStage: '签约', secondaryPhone: '', birthday: '1990-06-15',
+      followUps: [
+        { time: new Date(now - 86400000*14).toISOString(), method: '来访', content: '老业主推荐首访，全流程算价，老公陪同', nextFollowUp: fDate(new Date(now - 86400000*7)), operator: '赵明' },
+        { time: new Date(now - 86400000*10).toISOString(), method: '去电', content: '确认资金到位，安排签约', nextFollowUp: fDate(new Date(now - 86400000*8)), operator: '赵明' },
+        { time: new Date(now - 86400000*5).toISOString(), method: '来访', content: '现场签约完成', nextFollowUp: fDate(new Date(now - 86400000*2)), operator: '赵明' }
+      ],
+      history: [],
+      calculated: true, fullProcess: true,
+      job: '公司高管', age: '30左右', area: '143', budget: '400万',
+      residence: '敏捷锦绣阳光', competitor: '',
+      visitDuration: '90',
+      visitTime: new Date(now - 86400000*7).toISOString().slice(0,16),
+      revisitCount: 3,
+      soace: '老业主推荐，客户资金充足，购房目的为改善自住。对品质要求高，要求全流程算价后当天认购。老公也来现场看过，都满意。对比万科，觉得项目性价比更高。',
+      note: '高意向A类客户，已认购，签合同',
+      followUpDate: fDate(new Date(now - 86400000*3)),
+      followUpNote: '签约后回访，感谢转介绍',
+      dealStatus: '签约', dealDate: fDate(new Date(now - 86400000*10)),
+      resistanceTags: [], solutions: [],
+      createdAt: new Date(now - 86400000*14).toISOString()
+    }
+  ];
+}
+
 // ============================================================
 // 2. DATABASE (localStorage)
 // ============================================================
@@ -682,11 +755,6 @@ function loadDB() {
         if (!c.followUps) c.followUps = [];
         if (!c.history) c.history = [];
       });
-      // v3.6 迁移：移除早期演示客户（演示电话 13812345601/02/03），避免其通过同步污染真实数据
-      var demoPhones = { '13812345601': 1, '13812345602': 1, '13812345603': 1 };
-      var beforeDemoClean = DB.customers.length;
-      DB.customers = DB.customers.filter(function(c) { return !demoPhones[c.phone]; });
-      var demoRemoved = DB.customers.length < beforeDemoClean;
       // v3.5 迁移：恢复此前被「自动回收」误移入公共池的客户（手动移入的不动）
       var restoredAny = false;
       DB.customers.forEach(function(c) {
@@ -704,7 +772,7 @@ function loadDB() {
           restoredAny = true;
         }
       });
-      if (restoredAny || demoRemoved) saveDB();
+      if (restoredAny) saveDB();
       if (!DB.settings) DB.settings = Object.assign({}, DEFAULT_SETTINGS);
       DB.settings.autoPoolDays = 0;
       if (!DB.soldUnits) DB.soldUnits = {};
@@ -714,12 +782,12 @@ function loadDB() {
       if (DB.adminCode) { ADMIN_CODE = DB.adminCode; }
     } else {
       DB.settings = Object.assign({}, DEFAULT_SETTINGS);
-      DB.customers = [];
+      DB.customers = makeDemo();
       saveDB();
     }
   } catch(e) {
     DB.settings = Object.assign({}, DEFAULT_SETTINGS);
-    DB.customers = [];
+    DB.customers = makeDemo();
     saveDB();
   }
 }
@@ -792,8 +860,6 @@ function mergeRemoteData(remoteData) {
   if (!DB.messages) DB.messages = [];
   if (!DB.sessions) DB.sessions = {};
   if (DB.version == null) DB.version = 3.3;
-  var _demoPhones = { '13812345601': 1, '13812345602': 1, '13812345603': 1 };
-  mergedCustomers = mergedCustomers.filter(function(c) { return !_demoPhones[c.phone]; });
   DB.customers = mergedCustomers;
   DB.currentUser = localUser;
   if (localUser && localToken) DB.currentUser.sessionToken = localToken;
