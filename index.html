@@ -718,7 +718,7 @@ function makeDemo() {
 // ============================================================
 // 2. DATABASE (localStorage)
 // ============================================================
-var DB = { version: 3.3, currentUser: null, customers: [], approvedUsers: [], pendingUsers: [], accounts: {}, adminCode: 'yuchen2026' };
+var DB = { version: 3.3, currentUser: null, customers: [], deletedCustomerIds: [], approvedUsers: [], pendingUsers: [], accounts: {}, adminCode: 'yuchen2026' };
 
 // Sync state
 var _syncClient = null;
@@ -739,12 +739,18 @@ function saveDB() {
   if (SYNC_ENABLED) syncToRemote();
 }
 
+function markCustomerDeleted(id) {
+  if (!DB.deletedCustomerIds) DB.deletedCustomerIds = [];
+  DB.deletedCustomerIds.push({ id: id, deletedAt: new Date().toISOString() });
+}
+
 function loadDB() {
   try {
     var raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       DB = JSON.parse(raw);
       if (!DB.customers) DB.customers = [];
+      if (!DB.deletedCustomerIds) DB.deletedCustomerIds = [];
       DB.customers.forEach(function(c) {
         if (!c.dealStatus) c.dealStatus = '未成交';
         if (!c.dealDate) c.dealDate = '';
@@ -824,9 +830,10 @@ function pullRemoteState(callback) {
       if (res.error) { console.warn('[Sync] Pull failed:', res.error.message); scheduleRetry(); if (callback) callback(); return; }
       if (!res.data || !res.data.data) { pushFullState(); if (callback) callback(); return; }
       var remote = res.data;
-      if (remote.revision <= _lastSyncedRevision) { if (callback) callback(); return; }
       _applyingRemote = true;
-      try { mergeRemoteData(remote.data); _lastSyncedRevision = remote.revision; } finally { _applyingRemote = false; }
+      var localWon = false;
+      try { localWon = mergeRemoteData(remote.data); _lastSyncedRevision = remote.revision; } finally { _applyingRemote = false; }
+      if (localWon) pushFullState();
       if (callback) callback();
     })
     .catch(function(err) { console.warn('[Sync] Pull error:', err.message); if (callback) callback(); });
@@ -835,23 +842,48 @@ function pullRemoteState(callback) {
 function mergeCustomers(localList, remoteList) {
   var byId = {};
   (localList || []).forEach(function(c) { if (c && c.id) byId[c.id] = c; });
+  var localWon = false;
   (remoteList || []).forEach(function(rc) {
     if (!rc || !rc.id) return;
     var lc = byId[rc.id];
     if (!lc) { byId[rc.id] = rc; return; }
     var lt = lc.updatedAt || lc.createdAt || '';
     var rt = rc.updatedAt || rc.createdAt || '';
-    if (rt > lt) byId[rc.id] = rc;
+    if (rt > lt) { byId[rc.id] = rc; }
+    else if (lt > rt) { localWon = true; }
   });
-  return Object.keys(byId).map(function(k) { return byId[k]; });
+  (localList || []).forEach(function(lc) {
+    if (!lc || !lc.id) return;
+    var found = (remoteList || []).some(function(rc) { return rc && rc.id === lc.id; });
+    if (!found) localWon = true;
+  });
+  return { list: Object.keys(byId).map(function(k) { return byId[k]; }), localWon: localWon };
+}
+
+function mergeDeletedIds(localList, remoteList) {
+  var map = {};
+  var localWon = false;
+  (remoteList || []).forEach(function(d) { if (d && d.id) map[d.id] = d.deletedAt || ''; });
+  (localList || []).forEach(function(d) {
+    if (!d || !d.id) return;
+    var dt = d.deletedAt || '';
+    var existing = map[d.id];
+    if (existing === undefined) { map[d.id] = dt; localWon = true; }
+    else if (dt > existing) { map[d.id] = dt; localWon = true; }
+  });
+  return { map: map, localWon: localWon };
 }
 
 function mergeRemoteData(remoteData) {
   var localUser = DB.currentUser;
   var localToken = localUser ? localUser.sessionToken : null;
-  var mergedCustomers = mergeCustomers(DB.customers, remoteData.customers);
+  var merged = mergeCustomers(DB.customers, remoteData.customers);
+  var delMerge = mergeDeletedIds(DB.deletedCustomerIds, remoteData.deletedCustomerIds);
+  var mergedCustomers = merged.list.filter(function(c) { return !delMerge.map[c.id]; });
+  var localWon = merged.localWon || delMerge.localWon;
   DB = remoteData;
   if (!DB.customers) DB.customers = [];
+  if (!DB.deletedCustomerIds) DB.deletedCustomerIds = [];
   if (!DB.approvedUsers) DB.approvedUsers = [];
   if (!DB.pendingUsers) DB.pendingUsers = [];
   if (!DB.accounts) DB.accounts = {};
@@ -861,6 +893,7 @@ function mergeRemoteData(remoteData) {
   if (!DB.sessions) DB.sessions = {};
   if (DB.version == null) DB.version = 3.3;
   DB.customers = mergedCustomers;
+  DB.deletedCustomerIds = Object.keys(delMerge.map).map(function(k) { return { id: k, deletedAt: delMerge.map[k] }; });
   DB.currentUser = localUser;
   if (localUser && localToken) DB.currentUser.sessionToken = localToken;
   // Restore accounts & admin code from remote
@@ -868,17 +901,20 @@ function mergeRemoteData(remoteData) {
   if (DB.adminCode) { ADMIN_CODE = DB.adminCode; }
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e) {}
   if (localUser) renderAll();
+  return localWon;
 }
 
 function pushFullState() {
-  if (!_syncClient || _applyingRemote || !_syncReady) return;
+  if (!_syncClient || _applyingRemote) return;
   var payload = JSON.parse(JSON.stringify(DB));
   delete payload.currentUser;
   _syncClient
     .from('crm_state')
     .upsert({ id: 1, data: payload, updated_by: (DB.currentUser ? DB.currentUser.name + '/' : '') + _syncDeviceId, updated_at: new Date().toISOString(), revision: _lastSyncedRevision + 1 }, { onConflict: 'id' })
+    .select('revision')
     .then(function(res) {
       if (res.error) { console.warn('[Sync] Push failed:', res.error.message); return; }
+      if (res.data && res.data[0] && res.data[0].revision) _lastSyncedRevision = res.data[0].revision;
     })
     .catch(function(err) { console.warn('[Sync] Push error:', err.message); });
 }
@@ -915,9 +951,10 @@ function handleRemoteChange(payload) {
   var remoteDeviceId = parts[parts.length - 1];
   if (remoteDeviceId === _syncDeviceId) return;
   var remoteRev = payload.new.revision || 0;
-  if (remoteRev <= _lastSyncedRevision) return;
   _applyingRemote = true;
-  try { mergeRemoteData(payload.new.data); _lastSyncedRevision = remoteRev; } finally { _applyingRemote = false; }
+  var localWon = false;
+  try { localWon = mergeRemoteData(payload.new.data); _lastSyncedRevision = remoteRev; } finally { _applyingRemote = false; }
+  if (localWon) pushFullState();
 }
 
 function syncSessions() {
@@ -1390,6 +1427,7 @@ function batchDelete() {
   if (sel.length === 0) { toast('请先选择客户', 'error'); return; }
   confirmDlg('批量删除', '⚠️ 确定删除 ' + sel.length + ' 位客户及其跟进记录吗？此操作不可恢复！', function() {
     var ids = sel.map(function(c) { return c.id; });
+    ids.forEach(function(id) { markCustomerDeleted(id); });
     DB.customers = DB.customers.filter(function(c) { return ids.indexOf(c.id) === -1; });
     saveDB(); toast('已删除 ' + sel.length + ' 位客户', 'success');
     toggleBatchMode(); renderCustomerList();
@@ -2881,6 +2919,7 @@ function deleteCustomer(customerId) {
   var c = DB.customers.find(function(x) { return x.id === customerId; });
   if (!c) return;
   confirmDlg('删除确认', '确定要删除 <b>' + escHtml(c.name) + '</b> 吗？此操作无法撤销。', function() {
+    markCustomerDeleted(customerId);
     DB.customers = DB.customers.filter(function(x) { return x.id !== customerId; });
     saveDB(); closeDetail(); renderCustomerList(); renderWorkbench();
     toast('已删除', 'success');
@@ -3184,6 +3223,7 @@ function openForm(prefill, customer) {
   var delBtn = document.getElementById('form-delete');
   if (delBtn) delBtn.onclick = function() {
     confirmDlg('删除确认', '确定删除 <b>' + escHtml(editingCustomer.name) + '</b> 吗？', function() {
+      markCustomerDeleted(editingCustomer.id);
       DB.customers = DB.customers.filter(function(x) { return x.id !== editingCustomer.id; });
       saveDB(); toast('已删除', 'success');
       closeForm(); renderCustomerList(); renderWorkbench();
