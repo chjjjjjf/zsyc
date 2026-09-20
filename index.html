@@ -381,7 +381,6 @@ body { display: flex; flex-direction: column; }
   <div style="padding:10px 12px 0;">
     <div class="cust-tabs" id="cust-tabs">
       <button class="cust-tab active" id="tab-mine">我的客户</button>
-      <button class="cust-tab" id="tab-pool">公共池</button>
       <button id="batch-toggle-btn" style="margin-left:auto;padding:6px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-dim);">☐ 批量</button>
     </div>
     <div class="search-bar">
@@ -428,7 +427,6 @@ body { display: flex; flex-direction: column; }
     <span id="batch-count" style="font-size:13px;font-weight:600;color:var(--gold);min-width:54px;">已选 0</span>
     <button class="qf-btn" id="batch-level" style="font-size:12px;padding:5px 10px;">改等级</button>
     <button class="qf-btn" id="batch-consultant" style="font-size:12px;padding:5px 10px;">分配顾问</button>
-    <button class="qf-btn" id="batch-pool-btn" style="font-size:12px;padding:5px 10px;">移入公池</button>
     <button class="qf-btn" id="batch-delete-btn" style="font-size:12px;padding:5px 10px;color:var(--red);border-color:rgba(231,76,60,0.3);">删除</button>
     <button class="qf-btn" id="batch-cancel-btn" style="font-size:12px;padding:5px 10px;margin-left:auto;">取消</button>
   </div>
@@ -466,8 +464,6 @@ body { display: flex; flex-direction: column; }
     <div class="detail-name" id="detail-name"></div>
     <div class="detail-actions">
       <button class="detail-btn" id="detail-edit" style="display:none">编辑</button>
-      <button class="detail-btn" id="detail-pool" style="display:none">🏊 移入公共池</button>
-      <button class="detail-btn" id="detail-claim" style="display:none">🎣 领取</button>
       <button class="detail-btn danger" id="detail-del" style="display:none">删除</button>
       <button class="detail-btn" id="detail-price" style="border-color:var(--gold);color:var(--gold);display:none">💰 算价格</button>
     </div>
@@ -754,27 +750,19 @@ function loadDB() {
       DB.customers.forEach(function(c) {
         if (!c.dealStatus) c.dealStatus = '未成交';
         if (!c.dealDate) c.dealDate = '';
-        if (!c.inPool) c.inPool = false;
         if (!c.salesStage) c.salesStage = (c.dealStatus === '签约' || c.dealStatus === '认购') ? c.dealStatus : '问询';
         if (!c.secondaryPhone) c.secondaryPhone = '';
         if (!c.birthday) c.birthday = '';
         if (!c.followUps) c.followUps = [];
         if (!c.history) c.history = [];
       });
-      // v3.5 迁移：恢复此前被「自动回收」误移入公共池的客户（手动移入的不动）
+      // 迁移：公共池功能已移除，恢复所有此前被移入公共池的客户
       var restoredAny = false;
       DB.customers.forEach(function(c) {
-        if (c.inPool && c.poolReason && c.poolReason.indexOf('未跟进') !== -1) {
+        if (c.inPool) {
           c.inPool = false;
           delete c.poolReason;
           delete c.poolTime;
-          if (!c.history) c.history = [];
-          c.history.unshift({
-            time: new Date().toISOString(),
-            action: '恢复至我的客户',
-            detail: '关闭自动回收后，恢复此前被自动移入公共池的客户',
-            operator: '系统'
-          });
           restoredAny = true;
         }
       });
@@ -1011,16 +999,12 @@ function getMyCustomers() {
   }
   if (!DB.pendingUsers) DB.pendingUsers = [];
   if (DB.currentUser.role === '销售经理') return DB.customers;
-  return DB.customers.filter(function(c) { return c.consultant === DB.currentUser.name && !c.inPool; });
-}
-function getPoolCustomers() {
-  if (!DB.currentUser) return [];
-  return DB.customers.filter(function(c) { return c.inPool; });
+  return DB.customers.filter(function(c) { return c.consultant === DB.currentUser.name; });
 }
 function getAllAssignedCustomers() {
   if (!DB.currentUser) return [];
   if (DB.currentUser.role !== '销售经理') return [];
-  return DB.customers.filter(function(c) { return !c.inPool; });
+  return DB.customers.slice();
 }
 
 // === History & FollowUp Helpers ===
@@ -1258,9 +1242,7 @@ function renderCustomerCard(c, extraHtml, hideQfBtn) {
 
   // Status tag — followup uses renderLabel directly for visual consistency with 渠/需/比
   var statusTag = '';
-  if (c.inPool) {
-    statusTag = '<span class="tag" style="background:rgba(184,148,46,0.15);color:var(--gold);font-weight:600;">🏊 公共池</span>';
-  } else if (isNew && !c.followUpDate) {
+  if (isNew && !c.followUpDate) {
     statusTag = '<span class="tag" style="background:rgba(46,204,113,0.12);color:var(--green);font-weight:600;">🆕 新登记</span>';
   } else {
     statusTag = '<span>' + status.text + '</span>';
@@ -1268,7 +1250,7 @@ function renderCustomerCard(c, extraHtml, hideQfBtn) {
 
   // Deal status badge (认购/签约 shown alongside status)
   var dealBadge = '';
-  if (!c.inPool && (c.dealStatus === '认购' || c.dealStatus === '签约')) {
+  if (c.dealStatus === '认购' || c.dealStatus === '签约') {
     var dealClr = c.dealStatus === '签约' ? '#2ecc71' : '#f39c12';
     dealBadge = '<span style="background:' + dealClr + '1a;color:' + dealClr + ';padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">' + c.dealStatus + '</span>';
   }
@@ -1339,7 +1321,6 @@ function renderCustomerCard(c, extraHtml, hideQfBtn) {
   '</div>';
 }
 
-var currentCustTab = 'mine';
 var currentSort = 'level-desc';
 var LEVEL_ORDER = { A: 6, B: 5, 'C+': 4, C: 3, 'C-': 2, D: 1 };
 var batchMode = false;
@@ -1406,20 +1387,10 @@ function batchAssignConsultant() {
 }
 
 function batchDoAssign(name) {
-  getSelectedCustomers().forEach(function(c) { c.consultant = name; c.inPool = false; c.updatedAt = new Date().toISOString(); });
+  getSelectedCustomers().forEach(function(c) { c.consultant = name; c.updatedAt = new Date().toISOString(); });
   saveDB(); toast('已分配给 ' + name, 'success');
   document.body.querySelectorAll('body > div').forEach(function(d) { if (d.style && d.style.zIndex === '500') d.remove(); });
   toggleBatchMode(); renderCustomerList();
-}
-
-function batchMoveToPool() {
-  var sel = getSelectedCustomers();
-  if (sel.length === 0) { toast('请先选择客户', 'error'); return; }
-  confirmDlg('移入公池', '确定将 ' + sel.length + ' 位客户移入公共池吗？其他顾问可领取跟进。', function() {
-    sel.forEach(function(c) { c.inPool = true; c.poolTime = new Date().toISOString(); c.updatedAt = new Date().toISOString(); });
-    saveDB(); toast('已移入公池', 'success');
-    toggleBatchMode(); renderCustomerList();
-  });
 }
 
 function batchDelete() {
@@ -1477,14 +1448,8 @@ function clearAdvFilter() {
 function renderCustomerList() {
   var search = (document.getElementById('search-input').value || '').trim().toLowerCase();
   var levelF = document.getElementById('level-filter').value;
-  var isPool = currentCustTab === 'pool';
-  var list;
-  if (isPool) {
-    list = getPoolCustomers();
-  } else {
-    list = getMyCustomers();
-    if (DB.currentUser && DB.currentUser.role === '销售经理') list = getAllAssignedCustomers();
-  }
+  var list = getMyCustomers();
+  if (DB.currentUser && DB.currentUser.role === '销售经理') list = getAllAssignedCustomers();
   list = list.filter(function(c) {
     var matchL = !levelF || c.level === levelF;
     var matchS = !search || c.name.toLowerCase().indexOf(search) !== -1
@@ -1513,14 +1478,8 @@ function renderCustomerList() {
     list.sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'zh'); });
   }
   var container = document.getElementById('customer-list');
-  var tabElMine = document.getElementById('tab-mine');
-  var tabElPool = document.getElementById('tab-pool');
-  if (tabElMine) tabElMine.classList.toggle('active', !isPool);
-  if (tabElPool) tabElPool.classList.toggle('active', isPool);
   if (list.length === 0) {
-    container.innerHTML = isPool
-      ? '<div class="pool-empty">🏊 公共池暂无客户<br><br><span style="font-size:12px;color:var(--text-dim);">不要的客户可移入公共池，其他顾问可领取跟进</span></div>'
-      : '<div class="empty-state"><div class="es-icon">👥</div><p>暂无客户记录</p><p style="margin-top:6px;font-size:12px;">点击右下角 + 添加客户</p></div>';
+    container.innerHTML = '<div class="empty-state"><div class="es-icon">👥</div><p>暂无客户记录</p><p style="margin-top:6px;font-size:12px;">点击右下角 + 添加客户</p></div>';
     return;
   }
   container.innerHTML = list.map(renderCustomerCard).join('');
@@ -1542,11 +1501,6 @@ function renderCustomerList() {
   };
 }
 
-function switchCustTab(tab) {
-  currentCustTab = tab;
-  renderCustomerList();
-}
-
 // === Workbench ===
 var workbenchView = 'list';
 var calendarYear = 0;
@@ -1560,7 +1514,6 @@ function renderWorkbench() {
   autoPoolCheck();
 
   var todayFollowups = customers.filter(function(c) {
-    if (c.inPool) return false;
     if (!c.followUpDate) return false;
     return c.followUpDate === todayStr;
   });
@@ -1687,7 +1640,7 @@ function renderWorkbench() {
 function getFollowUpsForDate(dateStr) {
   var list = getMyCustomers();
   if (DB.currentUser && DB.currentUser.role === '销售经理') list = getAllAssignedCustomers();
-  return list.filter(function(c) { return c.followUpDate === dateStr && !c.inPool; });
+  return list.filter(function(c) { return c.followUpDate === dateStr; });
 }
 
 function getCalDayCounts(dateStr) {
@@ -1843,7 +1796,7 @@ function renderSelfStats() {
   var consList = [];
   Object.keys(DEMO_ACCOUNTS).forEach(function(n) { if (DEMO_ACCOUNTS[n].role === '置业顾问') consList.push(n); });
   if (DB.currentUser && DB.currentUser.role === '置业顾问' && consList.length >= 2) {
-    var allAssigned = DB.customers.filter(function(c) { return !c.inPool && consList.indexOf(c.consultant) !== -1 && c.consultant !== DB.currentUser.name; });
+    var allAssigned = DB.customers.filter(function(c) { return consList.indexOf(c.consultant) !== -1 && c.consultant !== DB.currentUser.name; });
     var peerCount = consList.length - 1;
     var teamTotal = allAssigned.length;
     var teamDeals = allAssigned.filter(function(c) { return c.dealStatus === '签约' || c.dealStatus === '认购'; }).length;
@@ -1904,7 +1857,6 @@ function renderSelfStats() {
 
 function renderTeamStats() {
   var all = getAllAssignedCustomers();
-  var pool = getPoolCustomers();
   var todayStr = today();
   var totalDeal = all.filter(function(c) { return c.dealStatus === '签约' || c.dealStatus === '认购'; }).length;
   var totalRate = all.length ? Math.round(totalDeal / all.length * 100) : 0;
@@ -1959,11 +1911,6 @@ function renderTeamStats() {
     '</div>';
   }).join('');
 
-  var poolHtml = pool.length > 0
-    ? '<div class="chart-box"><div class="chart-title">🏊 公共池（' + pool.length + '）</div><div style="font-size:12px;color:var(--text-dim);line-height:1.8;">' +
-      pool.map(function(c) { return '· ' + escRaw(c.name) + '（' + escRaw(c.consultant || '未知来源') + '）'; }).join('<br>') + '</div></div>'
-    : '';
-
   var html = '<div class="chart-title" style="padding:14px 16px 4px;">📊 团队总览</div>' +
     '<div class="perf-grid" id="team-perf-grid">' +
       '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="visit"><div class="n">' + all.length + '</div><div class="l">总来访组数</div><div class="stat-tap">点击选择时段</div></div>' +
@@ -1971,8 +1918,7 @@ function renderTeamStats() {
       '<div class="perf-card perf-clickable" style="cursor:pointer;" data-team-stat="teamRate"><div class="n">' + totalRate + '%</div><div class="l">整体成交率</div><div class="stat-tap">点击查看成交</div></div>' +
     '</div>' +
     '<div class="section-title">👥 每位顾问情况 <span style="font-size:11px;color:var(--text-dim);">点击卡片查看详情</span></div>' +
-    (teamHtml || '<div class="pool-empty">暂无客户数据</div>') +
-    poolHtml;
+    (teamHtml || '<div class="pool-empty">暂无客户数据</div>');
   document.getElementById('stats-scroll').innerHTML = html;
 
   // Event delegation for team perf cards
@@ -2766,43 +2712,6 @@ function openDetail(id) {
   document.getElementById('detail-price').style.display = (isManager || isOwner) ? '' : 'none';
   document.getElementById('detail-price').innerHTML = c.calculatedPrice ? renderLabel('价') + ' 查看算价' : renderLabel('价') + ' 算价格';
 
-  var poolBtn = document.getElementById('detail-pool');
-  if (c.inPool) {
-    poolBtn.style.display = 'none';
-  } else if (isManager || isOwner) {
-    poolBtn.style.display = '';
-    poolBtn.onclick = function() {
-      confirmDlg('移入公共池', '确定将 <b>' + escHtml(c.name) + '</b> 移入公共池吗？其他顾问将可以看到并领取此客户。', function() {
-        c.inPool = true; c.poolTime = new Date().toISOString();
-        saveDB(); toast('已移入公共池', 'success');
-        closeDetail(); renderCustomerList(); renderWorkbench();
-      });
-    };
-  } else { poolBtn.style.display = 'none'; }
-
-  var claimBtn = document.getElementById('detail-claim');
-  if (c.inPool && !isManager) {
-    claimBtn.style.display = '';
-    claimBtn.textContent = '🎣 领取';
-    claimBtn.onclick = function() {
-      confirmDlg('领取客户', '确定将此客户领取到你的名下吗？', function() {
-        c.inPool = false; c.consultant = DB.currentUser.name; c.claimedAt = new Date().toISOString();
-        saveDB(); toast('已领取到你的名下', 'success');
-        closeDetail(); renderCustomerList(); renderWorkbench();
-      });
-    };
-  } else if (c.inPool && isManager) {
-    claimBtn.style.display = '';
-    claimBtn.textContent = '👤 指派';
-    claimBtn.onclick = function() {
-      var name = prompt('指派给哪位顾问？', '');
-      if (!name) return;
-      c.inPool = false; c.consultant = name.trim(); c.claimedAt = new Date().toISOString();
-      saveDB(); toast('已指派给 ' + name.trim(), 'success');
-      closeDetail(); renderCustomerList(); renderWorkbench();
-    };
-  } else { claimBtn.style.display = 'none'; }
-
   // Edit/Delete/Price buttons
   document.getElementById('detail-edit').onclick = function() { openForm(null, c); };
   document.getElementById('detail-price').onclick = function() { openPriceCalc(c.id); };
@@ -3418,7 +3327,7 @@ function showTeamTimeOptions(type, label) {
 function showTimeFiltered(type, period, label) {
   document.getElementById('detail-overlay').style.display = 'none';
   var todayStr = today();
-  var allCs = DB.customers.filter(function(c) { return !c.inPool; });
+  var allCs = DB.customers;
 
   // Determine date range
   var startDate = '';
@@ -3462,14 +3371,14 @@ function showTimeFiltered(type, period, label) {
 
 function showConsultantCustomers(name) {
   var todayStr = today();
-  var customers = DB.customers.filter(function(c) { return c.consultant === name && !c.inPool; });
+  var customers = DB.customers.filter(function(c) { return c.consultant === name; });
   if (customers.length === 0) { toast(name + '暂无客户', 'info'); return; }
   renderStatListOverlay(customers, name + ' · 客户');
 }
 
 function showConsultantCustomersByDim(name, dim) {
   var todayStr = today();
-  var customers = DB.customers.filter(function(c) { return c.consultant === name && !c.inPool; });
+  var customers = DB.customers.filter(function(c) { return c.consultant === name; });
   var filtered;
   var dimLabel;
   if (dim === 'all') {
@@ -3508,7 +3417,7 @@ function showStatList(shown, label) {
   var todayStr = today();
   var myCs = getMyCustomers();
   if (DB.currentUser && DB.currentUser.role === '销售经理') {
-    myCs = DB.customers.filter(function(c) { return !c.inPool; });
+    myCs = DB.customers;
   }
   var filtered = [];
   if (label === '所有') filtered = myCs;
@@ -3743,7 +3652,7 @@ function exportCustomerSummary() {
   var today = new Date().toISOString().slice(0, 10);
 
   function doExport() {
-    var hdrs = ['序号','姓名','年龄','电话','意向面积','意向栋数','等级','销售阶段','成交状态','成交日期','顾问','渠道','居住小区','对比项目','职业','是否算价','SOACE分析','抗性标签','解决方案','跟进日期','跟进方式','跟进记录(最近5条)','复访次数','创建日期','公共池','算价结果'];
+    var hdrs = ['序号','姓名','年龄','电话','意向面积','意向栋数','等级','销售阶段','成交状态','成交日期','顾问','渠道','居住小区','对比项目','职业','是否算价','SOACE分析','抗性标签','解决方案','跟进日期','跟进方式','跟进记录(最近5条)','复访次数','创建日期','算价结果'];
     var lvOrd = {A:0,B:1,'C+':2,C:3,'C-':4,D:5};
     var sorted = customers.slice().sort(function(a,b) {
       if ((lvOrd[a.level]||9) !== (lvOrd[b.level]||9)) return (lvOrd[a.level]||9) - (lvOrd[b.level]||9);
@@ -3762,7 +3671,6 @@ function exportCustomerSummary() {
         (c.soace||'').slice(0,200), (c.resistanceTags||[]).join(', '), (c.solutions||[]).join('; '),
         c.followUpDate||'', fu.length>0?fu[0].method||'':'', fuStr,
         c.revisitCount||0, (c.createdAt||'').slice(0,10),
-        c.inPool?'是':'否',
         c.calculatedPrice ? (c.calculatedPrice.building||'') + ' ' + (c.calculatedPrice.price||'') + '元' : ''
       ]);
     });
@@ -3940,8 +3848,8 @@ function checkFollowupNotifications() {
   if (!DB.currentUser) return;
   var todayStr = today();
   var myList = DB.currentUser.role === '销售经理'
-    ? DB.customers.filter(function(c) { return !c.inPool; })
-    : DB.customers.filter(function(c) { return c.consultant === DB.currentUser.name && !c.inPool; });
+    ? DB.customers
+    : DB.customers.filter(function(c) { return c.consultant === DB.currentUser.name; });
   var dueToday = myList.filter(function(c) { return c.followUpDate === todayStr; });
   dueToday.forEach(function(c) {
     try {
@@ -4332,7 +4240,6 @@ function initApp() {
   document.getElementById('batch-toggle-btn').onclick = toggleBatchMode;
   document.getElementById('batch-level').onclick = batchChangeLevel;
   document.getElementById('batch-consultant').onclick = batchAssignConsultant;
-  document.getElementById('batch-pool-btn').onclick = batchMoveToPool;
   document.getElementById('batch-delete-btn').onclick = batchDelete;
   document.getElementById('batch-cancel-btn').onclick = toggleBatchMode;
   document.getElementById('wb-view-list').onclick = function() {
@@ -4366,11 +4273,6 @@ function initApp() {
   document.getElementById('filter-date-to').addEventListener('change', updateAdvFilter);
   document.getElementById('filter-building').addEventListener('input', function() { filterBuilding = this.value.trim(); renderCustomerList(); });
   document.getElementById('filter-clear').onclick = clearAdvFilter;
-
-  var tabMine = document.getElementById('tab-mine');
-  var tabPool = document.getElementById('tab-pool');
-  if (tabMine) tabMine.onclick = function() { switchCustTab('mine'); };
-  if (tabPool) tabPool.onclick = function() { switchCustTab('pool'); };
 
   // Pull to refresh
   var custScroll = document.getElementById('cust-scroll');
